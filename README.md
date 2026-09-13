@@ -100,12 +100,3 @@ Every member also serves as a developer/tester for at least three use cases.
 See [`docs/`](docs/) for requirements, analysis and design models, and meeting logs.
 Documentation is kept in this repository so that it evolves together with the code.
 
-## AI-Assisted Development
-
-Per the project requirements, responsible use of AI-assisted development tools is
-permitted for this team project. Every team member remains fully responsible for the
-correctness and quality of submitted work and must be able to explain all code, tests,
-architecture, and design decisions.
-
-Note that the course syllabus prohibits AI assistance on other coursework unless the
-instructor explicitly permits it.

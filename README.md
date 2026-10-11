@@ -95,6 +95,24 @@ Every member also serves as a developer/tester for at least three use cases.
 - `feature/<short-description>` — one branch per use case or issue
 - Open a pull request, get at least one teammate's review, then merge
 
+## Implemented Use Cases (backend)
+
+The backend starts with an in-memory H2 database seeded with one company, one recruiter
+(id 1), one administrator (id 1) and a few postings, so every endpoint below can be called
+right after `mvnw spring-boot:run`. Sign in is not implemented yet: a recruiter is identified
+by the `X-Recruiter-Id` header and an administrator by `X-Administrator-Id`.
+
+| Use case | Owner | Endpoints |
+|---|---|---|
+| UC-01 Search Available Jobs | Luyu Niu | `GET /api/jobs/search` (asks for criteria) · `GET /api/jobs/search/results?keyword=&location=&employmentType=` (open postings, newest first; all parameters optional) |
+| UC-09 Create and Publish a Job Posting | Luyu Niu | `GET /api/postings/new` · `POST /api/postings` (JSON: title, description, location, employmentType, closingDate → DRAFT) · `POST /api/postings/{id}/publish` |
+| UC-15 Manage Accounts and Roles | Luyu Niu | `GET /api/accounts/change` · `GET /api/accounts/lookup?email=` · `PUT /api/accounts/{id}/role-status` (JSON: newRole and/or newStatus) |
+
+Business-rule failures return `400 {"message": ...}` and unknown ids or emails return `404`.
+The code follows the sequence diagrams and the design class diagram in the project
+documentation: one `*Controller` per use case, `JobPostingService` / `AccountService` for the
+rules, and `JobPosting` / `UserAccount` / `Company` / `Recruiter` / `Administrator` as entities.
+
 ## Documentation
 
 See [`docs/`](docs/) for requirements, analysis and design models, and meeting logs.

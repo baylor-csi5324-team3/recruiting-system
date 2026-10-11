@@ -92,6 +92,16 @@ public class Application {
         this.respondedAt = respondedAt;
     }
 
+    public void startReview() {
+        if (stage != ApplicationStage.SUBMITTED) {
+            throw new IllegalStateException(
+                    "Only a submitted application can enter review."
+            );
+        }
+
+        this.stage = ApplicationStage.UNDER_REVIEW;
+    }
+
     public Long getId() {
         return id;
     }

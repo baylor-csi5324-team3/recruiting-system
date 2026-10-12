@@ -9,6 +9,7 @@ import edu.baylor.csi5324.rams.repository.ApplicantRepository;
 import edu.baylor.csi5324.rams.repository.ApplicationRepository;
 import edu.baylor.csi5324.rams.repository.JobPostingRepository;
 import edu.baylor.csi5324.rams.repository.RecruiterRepository;
+import edu.baylor.csi5324.rams.repository.ResumeRepository;
 import edu.baylor.csi5324.rams.repository.UserAccountRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -18,8 +19,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
-import edu.baylor.csi5324.rams.repository.ApplicationRepository;
-import edu.baylor.csi5324.rams.repository.ApplicantRepository;
+
 import static edu.baylor.csi5324.rams.service.FixedClockConfig.TODAY;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -31,6 +31,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @Import(FixedClockConfig.class)
 class AccountServiceTest {
 
+    @Autowired org.springframework.security.crypto.password.PasswordEncoder encoder;
     @Autowired AccountService service;
     @Autowired UserAccountRepository accounts;
     @Autowired AdministratorRepository administrators;
@@ -38,6 +39,7 @@ class AccountServiceTest {
     @Autowired JobPostingRepository postings;
     @Autowired ApplicationRepository applications;
     @Autowired ApplicantRepository applicants;
+    @Autowired ResumeRepository resumes;
 
     private Administrator admin;
     private UserAccount adminAccount;
@@ -49,6 +51,7 @@ class AccountServiceTest {
     void setUp() {
         // Delete dependent records before the records they reference.
         applications.deleteAll();
+        resumes.deleteAll();
         applicants.deleteAll();
         postings.deleteAll();
         recruiters.deleteAll();
@@ -60,6 +63,7 @@ class AccountServiceTest {
         adminAccount = accounts.save(
                 new UserAccount(
                         "admin@example.com",
+                        encoder.encode("Account fixture secret"),
                         Role.ADMINISTRATOR,
                         AccountStatus.ACTIVE
                 )
@@ -72,6 +76,7 @@ class AccountServiceTest {
         applicant = accounts.save(
                 new UserAccount(
                         "applicant@example.com",
+                        encoder.encode("Account fixture secret"),
                         Role.APPLICANT,
                         AccountStatus.ACTIVE
                 )
@@ -120,7 +125,7 @@ class AccountServiceTest {
         assertThrows(ValidationException.class, () -> service.applyChange(adminAccount.getId(), Role.APPLICANT, null, admin));
         assertEquals(Role.ADMINISTRATOR, accounts.findById(adminAccount.getId()).orElseThrow().getRole());
 
-        accounts.save(new UserAccount("second.admin@example.com", Role.ADMINISTRATOR, AccountStatus.ACTIVE));
+        accounts.save(new UserAccount("second.admin@example.com", encoder.encode("Account fixture secret"), Role.ADMINISTRATOR, AccountStatus.ACTIVE));
         assertEquals(AccountStatus.DEACTIVATED, service.applyChange(adminAccount.getId(), null, AccountStatus.DEACTIVATED, admin).getStatus());
     }
 

@@ -11,6 +11,8 @@ import jakarta.persistence.Id;
 import jakarta.persistence.ManyToOne;
 
 import java.time.LocalDateTime;
+import java.util.Locale;
+import java.util.Objects;
 
 /**
  * Sign-in account. The role decides the permissions; the status decides whether sign in is allowed.
@@ -23,8 +25,12 @@ public class UserAccount {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true)
+    @Column(nullable = false, unique = true, columnDefinition = "VARCHAR_IGNORECASE(255)")
     private String email;
+
+    @JsonIgnore
+    @Column(nullable = false, length = 60)
+    private String passwordHash;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
@@ -42,10 +48,22 @@ public class UserAccount {
     protected UserAccount() {
     }
 
+    /** Legacy transient construction; a passwordless instance cannot be persisted. */
     public UserAccount(String email, Role role, AccountStatus status) {
         this.email = email;
         this.role = role;
         this.status = status;
+    }
+
+    /** Creates an account with an already encoded credential; raw passwords never enter the entity. */
+    public UserAccount(String email, String passwordHash, Role role, AccountStatus status) {
+        this(Objects.requireNonNull(email).trim().toLowerCase(Locale.ROOT), role, status);
+        this.passwordHash = Objects.requireNonNull(passwordHash);
+    }
+
+    @JsonIgnore
+    public String getPasswordHash() {
+        return passwordHash;
     }
 
     /** SD message 2.2: reports the current role and status. */

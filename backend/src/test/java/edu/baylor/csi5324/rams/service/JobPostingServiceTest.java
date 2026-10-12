@@ -11,6 +11,7 @@ import edu.baylor.csi5324.rams.repository.ApplicantRepository;
 import edu.baylor.csi5324.rams.repository.ApplicationRepository;
 import edu.baylor.csi5324.rams.repository.JobPostingRepository;
 import edu.baylor.csi5324.rams.repository.RecruiterRepository;
+import edu.baylor.csi5324.rams.repository.ResumeRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -18,8 +19,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
-import edu.baylor.csi5324.rams.repository.ApplicationRepository;
-import edu.baylor.csi5324.rams.repository.ApplicantRepository;
+
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -36,10 +36,13 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 @Import(FixedClockConfig.class)
 class JobPostingServiceTest {
 
+    @Autowired edu.baylor.csi5324.rams.repository.UserAccountRepository accounts;
+    @Autowired org.springframework.security.crypto.password.PasswordEncoder encoder;
     @Autowired JobPostingService service;
     @Autowired JobPostingRepository postings;
     @Autowired ApplicationRepository applications;
     @Autowired ApplicantRepository applicants;
+    @Autowired ResumeRepository resumes;
     @Autowired CompanyRepository companies;
     @Autowired RecruiterRepository recruiters;
     private Recruiter recruiter;
@@ -48,6 +51,7 @@ class JobPostingServiceTest {
     @BeforeEach
     void setUp() {
         applications.deleteAll();
+        resumes.deleteAll();
         applicants.deleteAll();
         postings.deleteAll();
         recruiters.deleteAll();
@@ -57,9 +61,14 @@ class JobPostingServiceTest {
 
         Company company = companies.save(new Company("Baylor Tech"));
         Company other = companies.save(new Company("Other Corp"));
-
-        recruiter = recruiters.save(new Recruiter("Rhea", company));
-        otherRecruiter = recruiters.save(new Recruiter("Omar", other));
+        var rhea = accounts.findByEmailIgnoreCase("job-tests.rhea@example.com").orElseGet(() -> accounts.save(
+                new edu.baylor.csi5324.rams.domain.UserAccount("job-tests.rhea@example.com", encoder.encode("Job fixture secret"),
+                        edu.baylor.csi5324.rams.domain.Role.RECRUITER, edu.baylor.csi5324.rams.domain.AccountStatus.ACTIVE)));
+        var omar = accounts.findByEmailIgnoreCase("job-tests.omar@example.com").orElseGet(() -> accounts.save(
+                new edu.baylor.csi5324.rams.domain.UserAccount("job-tests.omar@example.com", encoder.encode("Job fixture secret"),
+                        edu.baylor.csi5324.rams.domain.Role.RECRUITER, edu.baylor.csi5324.rams.domain.AccountStatus.ACTIVE)));
+        recruiter = recruiters.save(new Recruiter("Rhea", rhea, company));
+        otherRecruiter = recruiters.save(new Recruiter("Omar", omar, other));
     }
 
     private JobPosting publishedPosting(String title, String location, String type, LocalDate closing, LocalDateTime postedAt) {

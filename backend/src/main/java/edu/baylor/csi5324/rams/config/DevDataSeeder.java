@@ -72,7 +72,11 @@ public class DevDataSeeder {
             );
 
             Applicant applicant = applicants.save(
-                    new Applicant("Peter Chen", applicantAccount)
+                    new Applicant(
+                            "Peter Chen",
+                            "254-555-0100", // 示例号码
+                            applicantAccount
+                    )
             );
             accounts.save(new UserAccount("dormant@example.com", Role.APPLICANT, AccountStatus.DEACTIVATED));
 

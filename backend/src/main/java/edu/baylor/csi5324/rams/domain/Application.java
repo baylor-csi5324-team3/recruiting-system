@@ -30,7 +30,7 @@ public class Application {
     private ApplicationStage stage = ApplicationStage.SUBMITTED;
 
     @Column(nullable = false)
-    private LocalDateTime submittedAt;
+    private LocalDateTime submitDate;
 
     private LocalDateTime respondedAt;
 
@@ -43,11 +43,11 @@ public class Application {
     public Application(
             Applicant applicant,
             JobPosting jobPosting,
-            LocalDateTime submittedAt) {
+            LocalDateTime submitDate) {
 
         this.applicant = applicant;
         this.jobPosting = jobPosting;
-        this.submittedAt = submittedAt;
+        this.submitDate = submitDate;
         this.stage = ApplicationStage.SUBMITTED;
     }
 
@@ -69,8 +69,8 @@ public class Application {
         this.stage = ApplicationStage.OFFER;
     }
 
-    public void respondToOffer(
-            boolean accepted,
+    public void recordStage(
+            ApplicationStage nextStage,
             LocalDateTime respondedAt) {
 
         if (stage != ApplicationStage.OFFER) {
@@ -79,16 +79,18 @@ public class Application {
             );
         }
 
-        if (respondedAt == null) {
+        if (nextStage != ApplicationStage.ACCEPTED
+                && nextStage != ApplicationStage.DECLINED) {
             throw new IllegalArgumentException(
-                    "Response time is required."
+                    "The response stage must be ACCEPTED or DECLINED."
             );
         }
 
-        this.stage = accepted
-                ? ApplicationStage.ACCEPTED
-                : ApplicationStage.DECLINED;
+        if (respondedAt == null) {
+            throw new IllegalArgumentException("Response time is required.");
+        }
 
+        this.stage = nextStage;
         this.respondedAt = respondedAt;
     }
 
@@ -100,6 +102,10 @@ public class Application {
         }
 
         this.stage = ApplicationStage.UNDER_REVIEW;
+    }
+
+    public ApplicationSummary getDetails() {
+        return ApplicationSummary.from(this);
     }
 
     public Long getId() {
@@ -118,8 +124,8 @@ public class Application {
         return stage;
     }
 
-    public LocalDateTime getSubmittedAt() {
-        return submittedAt;
+    public LocalDateTime getSubmitDate() {
+        return submitDate;
     }
 
     public LocalDateTime getRespondedAt() {

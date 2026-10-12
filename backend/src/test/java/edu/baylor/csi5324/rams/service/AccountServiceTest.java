@@ -5,6 +5,8 @@ import edu.baylor.csi5324.rams.domain.Administrator;
 import edu.baylor.csi5324.rams.domain.Role;
 import edu.baylor.csi5324.rams.domain.UserAccount;
 import edu.baylor.csi5324.rams.repository.AdministratorRepository;
+import edu.baylor.csi5324.rams.repository.ApplicantRepository;
+import edu.baylor.csi5324.rams.repository.ApplicationRepository;
 import edu.baylor.csi5324.rams.repository.JobPostingRepository;
 import edu.baylor.csi5324.rams.repository.RecruiterRepository;
 import edu.baylor.csi5324.rams.repository.UserAccountRepository;
@@ -33,6 +35,8 @@ class AccountServiceTest {
     @Autowired AdministratorRepository administrators;
     @Autowired RecruiterRepository recruiters;
     @Autowired JobPostingRepository postings;
+    @Autowired ApplicationRepository applications;
+    @Autowired ApplicantRepository applicants;
 
     private Administrator admin;
     private UserAccount adminAccount;
@@ -44,6 +48,8 @@ class AccountServiceTest {
     void setUp() {
         // Children before parents: postings and recruiters refer to accounts, and an account's
         // change record refers to an administrator, who in turn refers to an account.
+        applications.deleteAll();
+        applicants.deleteAll();
         postings.deleteAll();
         recruiters.deleteAll();
         jdbc.update("update user_account set last_changed_by_id = null");

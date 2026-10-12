@@ -7,6 +7,8 @@ import edu.baylor.csi5324.rams.domain.PostingStatus;
 import edu.baylor.csi5324.rams.domain.Recruiter;
 import edu.baylor.csi5324.rams.domain.SearchCriteria;
 import edu.baylor.csi5324.rams.repository.CompanyRepository;
+import edu.baylor.csi5324.rams.repository.ApplicantRepository;
+import edu.baylor.csi5324.rams.repository.ApplicationRepository;
 import edu.baylor.csi5324.rams.repository.JobPostingRepository;
 import edu.baylor.csi5324.rams.repository.RecruiterRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -35,6 +37,8 @@ class JobPostingServiceTest {
 
     @Autowired JobPostingService service;
     @Autowired JobPostingRepository postings;
+    @Autowired ApplicationRepository applications;
+    @Autowired ApplicantRepository applicants;
     @Autowired CompanyRepository companies;
     @Autowired RecruiterRepository recruiters;
 
@@ -43,6 +47,8 @@ class JobPostingServiceTest {
 
     @BeforeEach
     void setUp() {
+        applications.deleteAll();
+        applicants.deleteAll();
         postings.deleteAll();
         recruiters.deleteAll();
         companies.deleteAll();

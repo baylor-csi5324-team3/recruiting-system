@@ -18,7 +18,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
-
+import edu.baylor.csi5324.rams.repository.ApplicationRepository;
+import edu.baylor.csi5324.rams.repository.ApplicantRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -41,7 +42,6 @@ class JobPostingServiceTest {
     @Autowired ApplicantRepository applicants;
     @Autowired CompanyRepository companies;
     @Autowired RecruiterRepository recruiters;
-
     private Recruiter recruiter;
     private Recruiter otherRecruiter;
 
@@ -52,8 +52,12 @@ class JobPostingServiceTest {
         postings.deleteAll();
         recruiters.deleteAll();
         companies.deleteAll();
+
+        // 后面的创建 Company、Recruiter 的代码保持原样
+
         Company company = companies.save(new Company("Baylor Tech"));
         Company other = companies.save(new Company("Other Corp"));
+
         recruiter = recruiters.save(new Recruiter("Rhea", company));
         otherRecruiter = recruiters.save(new Recruiter("Omar", other));
     }

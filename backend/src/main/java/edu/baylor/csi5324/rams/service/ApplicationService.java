@@ -9,7 +9,6 @@ import edu.baylor.csi5324.rams.domain.Role;
 import edu.baylor.csi5324.rams.domain.UserAccount;
 import edu.baylor.csi5324.rams.repository.ApplicantRepository;
 import edu.baylor.csi5324.rams.repository.ApplicationRepository;
-
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -34,25 +33,25 @@ public class ApplicationService {
         this.clock = clock;
     }
 
-    // 查看本人申请的信息，不修改 Stage。
+    // 对应顺序图：getOfferedApplication() → getDetails()。
     @Transactional(readOnly = true)
-    public ApplicationSummary getApplication(
+    public ApplicationSummary getOfferedApplication(
             Long applicationId,
             Long applicantId) {
 
         Application application =
                 findOwnedApplication(applicationId, applicantId);
 
-        return ApplicationSummary.from(application);
+        return application.getDetails();
     }
 
-    // Applicant 确认接受或拒绝后，调用这个方法。
-    public ApplicationSummary respondToOffer(
+    // Applicant 确认接受或拒绝后，更新申请的 Stage。
+    public ApplicationSummary updateStage(
             Long applicationId,
             Long applicantId,
             String decision) {
 
-        // 必须先验证，不能把所有非 ACCEPT 的输入都当成拒绝。
+        // 先校验输入，避免将非法值当成 DECLINE。
         if (!"ACCEPT".equals(decision)
                 && !"DECLINE".equals(decision)) {
             throw new ValidationException(
@@ -69,17 +68,22 @@ public class ApplicationService {
             );
         }
 
-        application.respondToOffer(
-                "ACCEPT".equals(decision),
+        ApplicationStage nextStage = "ACCEPT".equals(decision)
+                ? ApplicationStage.ACCEPTED
+                : ApplicationStage.DECLINED;
+
+        // 对应顺序图：recordStage(ACCEPTED / DECLINED)。
+        application.recordStage(
+                nextStage,
                 LocalDateTime.now(clock)
         );
 
         applications.saveAndFlush(application);
 
-        return ApplicationSummary.from(application);
+        return application.getDetails();
     }
 
-    // 查询申请，同时校验账号和申请归属。
+    // 查询申请，同时校验账号状态和申请归属。
     private Application findOwnedApplication(
             Long applicationId,
             Long applicantId) {

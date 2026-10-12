@@ -1,0 +1,6 @@
+title,description,location,employmentType,closingDate,status,recruiterEmail
+Software Engineering Intern,"Join the web team and help build the ""candidate dashboard"".","Austin, TX",INTERNSHIP,2026-12-31,PUBLISHED,recruiter@example.com
+Backend Developer,"Build Spring Boot services, maintain APIs, and improve recruiting workflows.","Waco, TX",FULL_TIME,2026-12-31,PUBLISHED,recruiter@example.com
+Frontend Developer,Build React dashboards for recruiters and applicants.,"Waco, TX",PART_TIME,2026-12-31,PUBLISHED,recruiter@example.com
+Data Analyst,Analyze recruiting activity for a historical opening that has expired.,"Dallas, TX",FULL_TIME,2026-10-05,PUBLISHED,recruiter@example.com
+QA Engineer,Test the recruiting platform before this draft is ready for publication.,"Waco, TX",FULL_TIME,2026-12-31,DRAFT,recruiter@example.com

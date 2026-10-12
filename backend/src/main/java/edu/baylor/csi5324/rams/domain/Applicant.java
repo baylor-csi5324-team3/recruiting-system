@@ -22,6 +22,15 @@ public class Applicant {
     )
     private UserAccount account;
 
+    public String getPhone() {
+        return phone;
+    }
+
+    public void setPhone(String phone) {
+        this.phone = phone;
+    }
+
+    private String phone;
     // JPA 使用的无参构造方法
     protected Applicant() {
     }
@@ -29,6 +38,11 @@ public class Applicant {
     public Applicant(String name, UserAccount account) {
         this.name = name;
         this.account = account;
+    }
+
+    public Applicant(String name, String phone, UserAccount account) {
+        this(name, account);
+        this.phone = phone;
     }
 
     public Long getId() {

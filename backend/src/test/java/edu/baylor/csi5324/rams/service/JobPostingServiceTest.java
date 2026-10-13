@@ -7,6 +7,8 @@ import edu.baylor.csi5324.rams.domain.PostingStatus;
 import edu.baylor.csi5324.rams.domain.Recruiter;
 import edu.baylor.csi5324.rams.domain.SearchCriteria;
 import edu.baylor.csi5324.rams.repository.CompanyRepository;
+import edu.baylor.csi5324.rams.repository.ApplicantRepository;
+import edu.baylor.csi5324.rams.repository.ApplicationRepository;
 import edu.baylor.csi5324.rams.repository.JobPostingRepository;
 import edu.baylor.csi5324.rams.repository.RecruiterRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -16,7 +18,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.test.context.ActiveProfiles;
-
+import edu.baylor.csi5324.rams.repository.ApplicationRepository;
+import edu.baylor.csi5324.rams.repository.ApplicantRepository;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -35,19 +38,26 @@ class JobPostingServiceTest {
 
     @Autowired JobPostingService service;
     @Autowired JobPostingRepository postings;
+    @Autowired ApplicationRepository applications;
+    @Autowired ApplicantRepository applicants;
     @Autowired CompanyRepository companies;
     @Autowired RecruiterRepository recruiters;
-
     private Recruiter recruiter;
     private Recruiter otherRecruiter;
 
     @BeforeEach
     void setUp() {
+        applications.deleteAll();
+        applicants.deleteAll();
         postings.deleteAll();
         recruiters.deleteAll();
         companies.deleteAll();
+
+        // 后面的创建 Company、Recruiter 的代码保持原样
+
         Company company = companies.save(new Company("Baylor Tech"));
         Company other = companies.save(new Company("Other Corp"));
+
         recruiter = recruiters.save(new Recruiter("Rhea", company));
         otherRecruiter = recruiters.save(new Recruiter("Omar", other));
     }

@@ -19,7 +19,10 @@ import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
-
+import edu.baylor.csi5324.rams.domain.Applicant;
+import edu.baylor.csi5324.rams.domain.Application;
+import edu.baylor.csi5324.rams.repository.ApplicantRepository;
+import edu.baylor.csi5324.rams.repository.ApplicationRepository;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -36,9 +39,16 @@ public class DevDataSeeder {
     private static final Logger log = LoggerFactory.getLogger(DevDataSeeder.class);
 
     @Bean
-    CommandLineRunner seedDevelopmentData(CompanyRepository companies, RecruiterRepository recruiters,
-                                          AdministratorRepository administrators, UserAccountRepository accounts,
-                                          JobPostingRepository postings, Clock clock) {
+    CommandLineRunner seedDevelopmentData(
+            CompanyRepository companies,
+            RecruiterRepository recruiters,
+            AdministratorRepository administrators,
+            UserAccountRepository accounts,
+            JobPostingRepository postings,
+            ApplicantRepository applicants,
+            ApplicationRepository applications,
+            Clock clock) {
+
         return args -> {
             if (accounts.count() > 0) {
                 return;
@@ -53,7 +63,21 @@ public class DevDataSeeder {
             accounts.save(new UserAccount("recruiter@example.com", Role.RECRUITER, AccountStatus.ACTIVE));
             Recruiter recruiter = recruiters.save(new Recruiter("Rhea Recruiter", company));
 
-            accounts.save(new UserAccount("applicant@example.com", Role.APPLICANT, AccountStatus.ACTIVE));
+            UserAccount applicantAccount = accounts.save(
+                    new UserAccount(
+                            "applicant@example.com",
+                            Role.APPLICANT,
+                            AccountStatus.ACTIVE
+                    )
+            );
+
+            Applicant applicant = applicants.save(
+                    new Applicant(
+                            "Peter Chen",
+                            "254-555-0100", // 示例号码
+                            applicantAccount
+                    )
+            );
             accounts.save(new UserAccount("dormant@example.com", Role.APPLICANT, AccountStatus.DEACTIVATED));
 
             JobPosting backend = new JobPosting(new PostingDetails("Backend Developer",
@@ -76,7 +100,30 @@ public class DevDataSeeder {
                     "Still a draft; must not appear in searches.", "Waco, TX", "FULL_TIME",
                     today.plusDays(20)), recruiter, now);
             postings.saveAll(java.util.List.of(backend, intern, frontend, expired, draft));
+            Application firstApplication = new Application(
+                    applicant,
+                    backend,
+                    now
+            );
+            firstApplication.startReview();
+            firstApplication.makeOffer();
+            applications.save(firstApplication);
 
+            Application secondApplication = new Application(
+                    applicant,
+                    intern,
+                    now
+            );
+            secondApplication.startReview();
+            secondApplication.makeOffer();
+            applications.save(secondApplication);
+
+            log.info(
+                    "Offer test data: applicantId={}, applicationIds=[{}, {}]",
+                    applicant.getId(),
+                    firstApplication.getId(),
+                    secondApplication.getId()
+            );
             log.info("Seeded development data: administrator id {}, recruiter id {}, {} postings",
                     admin.getId(), recruiter.getId(), postings.count());
         };

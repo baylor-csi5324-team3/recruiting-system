@@ -5,6 +5,8 @@ import edu.baylor.csi5324.rams.domain.Administrator;
 import edu.baylor.csi5324.rams.domain.Role;
 import edu.baylor.csi5324.rams.domain.UserAccount;
 import edu.baylor.csi5324.rams.repository.AdministratorRepository;
+import edu.baylor.csi5324.rams.repository.ApplicantRepository;
+import edu.baylor.csi5324.rams.repository.ApplicationRepository;
 import edu.baylor.csi5324.rams.repository.JobPostingRepository;
 import edu.baylor.csi5324.rams.repository.RecruiterRepository;
 import edu.baylor.csi5324.rams.repository.UserAccountRepository;
@@ -16,7 +18,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.context.annotation.Import;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.ActiveProfiles;
-
+import edu.baylor.csi5324.rams.repository.ApplicationRepository;
+import edu.baylor.csi5324.rams.repository.ApplicantRepository;
 import static edu.baylor.csi5324.rams.service.FixedClockConfig.TODAY;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -33,6 +36,8 @@ class AccountServiceTest {
     @Autowired AdministratorRepository administrators;
     @Autowired RecruiterRepository recruiters;
     @Autowired JobPostingRepository postings;
+    @Autowired ApplicationRepository applications;
+    @Autowired ApplicantRepository applicants;
 
     private Administrator admin;
     private UserAccount adminAccount;
@@ -42,16 +47,35 @@ class AccountServiceTest {
 
     @BeforeEach
     void setUp() {
-        // Children before parents: postings and recruiters refer to accounts, and an account's
-        // change record refers to an administrator, who in turn refers to an account.
+        // Delete dependent records before the records they reference.
+        applications.deleteAll();
+        applicants.deleteAll();
         postings.deleteAll();
         recruiters.deleteAll();
+
         jdbc.update("update user_account set last_changed_by_id = null");
         administrators.deleteAll();
         accounts.deleteAll();
-        adminAccount = accounts.save(new UserAccount("admin@example.com", Role.ADMINISTRATOR, AccountStatus.ACTIVE));
-        admin = administrators.save(new Administrator("Ada", adminAccount));
-        applicant = accounts.save(new UserAccount("applicant@example.com", Role.APPLICANT, AccountStatus.ACTIVE));
+
+        adminAccount = accounts.save(
+                new UserAccount(
+                        "admin@example.com",
+                        Role.ADMINISTRATOR,
+                        AccountStatus.ACTIVE
+                )
+        );
+
+        admin = administrators.save(
+                new Administrator("Ada", adminAccount)
+        );
+
+        applicant = accounts.save(
+                new UserAccount(
+                        "applicant@example.com",
+                        Role.APPLICANT,
+                        AccountStatus.ACTIVE
+                )
+        );
     }
 
     @Test

@@ -34,6 +34,15 @@ public class Application {
 
     private LocalDateTime respondedAt;
 
+    /** Snapshot of the resume at submission; later resume edits cannot change it. */
+    private String resumeFilename;
+
+    @Lob
+    private byte[] submittedResume;
+
+    @Lob
+    private String coverLetter;
+
     @Version
     private Long version;
 
@@ -50,6 +59,23 @@ public class Application {
         this.submitDate = submitDate;
         this.stage = ApplicationStage.SUBMITTED;
     }
+
+    /** Steps 7-8: snapshot submitted materials while preserving the existing stage workflow. */
+    public static Application submittedWithMaterials(
+            Applicant applicant, JobPosting job, LocalDateTime time,
+            Resume resume, String coverLetter) {
+        Application application = new Application(applicant, job, time);
+        application.resumeFilename = resume.getFilename();
+        application.submittedResume = resume.getContent();
+        application.coverLetter = coverLetter;
+        return application;
+    }
+
+    public String getResumeFilename() { return resumeFilename; }
+    public byte[] getSubmittedResume() {
+        return submittedResume == null ? null : submittedResume.clone();
+    }
+    public String getCoverLetter() { return coverLetter; }
 
     public boolean belongsTo(Applicant applicant) {
         return applicant != null

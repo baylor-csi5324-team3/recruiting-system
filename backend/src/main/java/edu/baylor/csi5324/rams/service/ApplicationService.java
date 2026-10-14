@@ -6,6 +6,15 @@ import edu.baylor.csi5324.rams.domain.Application;
 import edu.baylor.csi5324.rams.domain.ApplicationStage;
 import edu.baylor.csi5324.rams.domain.ApplicationSummary;
 import edu.baylor.csi5324.rams.domain.Role;
+import edu.baylor.csi5324.rams.domain.JobPosting;
+import edu.baylor.csi5324.rams.domain.PostingStatus;
+import edu.baylor.csi5324.rams.domain.Resume;
+import edu.baylor.csi5324.rams.repository.JobPostingRepository;
+import edu.baylor.csi5324.rams.repository.ResumeRepository;
+import edu.baylor.csi5324.rams.web.SubmitApplicationRequest;
+import edu.baylor.csi5324.rams.web.SubmittedApplicationResponse;
+import java.time.LocalDate;
+import java.util.List;
 import edu.baylor.csi5324.rams.domain.UserAccount;
 import edu.baylor.csi5324.rams.repository.ApplicantRepository;
 import edu.baylor.csi5324.rams.repository.ApplicationRepository;
@@ -22,15 +31,78 @@ public class ApplicationService {
     private final ApplicationRepository applications;
     private final ApplicantRepository applicants;
     private final Clock clock;
+    private final JobPostingRepository jobs;
+    private final ResumeRepository resumes;
 
     public ApplicationService(
             ApplicationRepository applications,
             ApplicantRepository applicants,
-            Clock clock) {
+            Clock clock,
+            JobPostingRepository jobs,
+            ResumeRepository resumes) {
 
         this.applications = applications;
         this.applicants = applicants;
         this.clock = clock;
+        this.jobs = jobs;
+        this.resumes = resumes;
+    }
+
+    /**
+     * Submit Job Application: validate ownership and materials (step 4),
+     * check job availability and duplicates (extensions), and persist a
+     * SUBMITTED application with an immutable resume snapshot (steps 7-9).
+     */
+    public SubmittedApplicationResponse submitApplication(SubmitApplicationRequest request) {
+        // Step 4: only active applicants can submit applications.
+        Applicant applicant = requireActiveApplicant(request.applicantId());
+
+        // Step 4: selected resume must exist, be nonempty, and belong to applicant.
+        Resume resume = resumes.findById(request.resumeId())
+                .orElseThrow(() -> new NotFoundException("Resume not found."));
+        if (!resume.getApplicant().getId().equals(applicant.getId())) {
+            throw new ValidationException("Resume does not belong to this applicant.");
+        }
+        if (resume.getContent().length == 0) {
+            throw new ValidationException("Resume cannot be empty.");
+        }
+
+        // Step 4 / closed-job extension: recheck availability at confirmation.
+        JobPosting job = jobs.findById(request.jobPostingId())
+                .orElseThrow(() -> new NotFoundException("Job posting not found."));
+        if (job.getStatus() != PostingStatus.PUBLISHED
+                || job.getClosingDate().isBefore(LocalDate.now(clock))) {
+            throw new ValidationException("Job posting is not open for applications.");
+        }
+
+        // Duplicate extension: one application per applicant and job.
+        if (applications.existsByApplicantIdAndJobPostingId(applicant.getId(), job.getId())) {
+            throw new ValidationException("You have already applied to this job.");
+        }
+
+        // Steps 7-9: save the snapshot and return the persisted record.
+        Application application = Application.submittedWithMaterials(
+                applicant, job, LocalDateTime.now(clock), resume, request.coverLetter());
+        return SubmittedApplicationResponse.from(applications.saveAndFlush(application));
+    }
+
+    /** My Applications reads persisted applications rather than browser state. */
+    @Transactional(readOnly = true)
+    public List<SubmittedApplicationResponse> listApplications(Long applicantId) {
+        requireActiveApplicant(applicantId);
+        return applications.findByApplicantIdOrderBySubmitDateDesc(applicantId)
+                .stream().map(SubmittedApplicationResponse::from).toList();
+    }
+
+    private Applicant requireActiveApplicant(Long applicantId) {
+        Applicant applicant = applicants.findById(applicantId)
+                .orElseThrow(() -> new NotFoundException("Applicant not found."));
+        UserAccount account = applicant.getAccount();
+        if (account == null || account.getRole() != Role.APPLICANT
+                || account.getStatus() != AccountStatus.ACTIVE) {
+            throw new ValidationException("An active applicant account is required.");
+        }
+        return applicant;
     }
 
     // 对应顺序图：getOfferedApplication() → getDetails()。

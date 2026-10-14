@@ -28,6 +28,7 @@ class RegistrationStartupHttpTest {
     @Autowired RecruiterRepository recruiters;
     @Autowired CompanyRepository companies;
     @Autowired JobPostingRepository postings;
+    @Autowired ApplicationRepository applications;
     @Autowired AdministratorRepository administrators;
     @Autowired PasswordEncoder encoder;
     @Autowired CommandLineRunner seedDevelopmentData;
@@ -82,6 +83,7 @@ class RegistrationStartupHttpTest {
         assertEquals(Role.RECRUITER, preserved.getRole());
         assertEquals(AccountStatus.DEACTIVATED, preserved.getStatus());
 
+        applications.deleteAll();
         postings.deleteAll();
         seedDevelopmentData.run();
         assertEquals(5, postings.count(), "existing accounts must not prevent initializing an empty job table");

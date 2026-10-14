@@ -1,0 +1,29 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Submit Job Application</title>
+<style>body{font-family:system-ui,sans-serif;max-width:850px;margin:40px auto;padding:0 18px;color:#172033;background:#f8fafc}h1{margin-bottom:5px}main,section{background:white;border:1px solid #dce3ec;border-radius:12px;padding:22px;margin:18px 0}label{display:block;font-weight:600;margin:14px 0 6px}select,textarea,input{width:100%;padding:10px;border:1px solid #aebacb;border-radius:7px;box-sizing:border-box}button{padding:10px 17px;background:#205aa0;color:white;border:0;border-radius:7px;cursor:pointer;margin-top:14px}button:disabled{opacity:.5}a{color:#205aa0}.error{color:#a21b29}.success{color:#13653e}pre{white-space:pre-wrap}</style></head>
+<body><header><h1>Submit Job Application</h1><p>Applicant demo · <a href="/applications.html">My Applications</a></p></header><main>
+<label for="applicant">Applicant</label><select id="applicant"></select>
+<label for="job">Open job posting</label><select id="job"></select>
+<label for="resume">Resume</label><select id="resume"></select>
+<label for="file">Upload a PDF/DOCX resume (optional)</label><input type="file" id="file" accept=".pdf,.docx"><button id="upload">Upload resume</button>
+<label for="letter">Cover letter (optional)</label><textarea id="letter" rows="5" placeholder="Your cover letter..."></textarea>
+<button id="review">Review application</button><p id="notice" role="status"></p></main>
+<section id="confirmation" hidden><h2>Review and confirm</h2><p id="summary"></p><button id="confirm">Confirm & Submit</button><button id="cancel" type="button">Cancel</button></section>
+<section id="success" hidden><h2>Application submitted</h2><p id="receipt"></p><a id="history" href="/applications.html">View My Applications</a></section>
+<script>
+const $ = id => document.getElementById(id);
+async function request(url, options={}) { const response=await fetch(url,options); const data=await response.json().catch(()=>({})); if(!response.ok) throw Error(data.message || data.error || `HTTP ${response.status}`); return data; }
+function message(value, error=false){$('notice').textContent=value;$('notice').className=error?'error':'success';}
+function populate(select, items, label){select.replaceChildren(); for(const item of items){const opt=document.createElement('option');opt.value=item.id;opt.textContent=label(item);select.append(opt);}}
+async function loadResumes(){ const id=$('applicant').value; if(!id)return; const list=await request(`/api/applicants/${id}/resumes`);populate($('resume'),list,r=>r.filename); }
+async function init(){try{const [applicants,jobs]=await Promise.all([request('/api/applicants'),request('/api/jobs/search/results')]);populate($('applicant'),applicants,a=>`${a.name} (#${a.id})`);populate($('job'),jobs,j=>`${j.title} — ${j.companyName}`);await loadResumes();}catch(e){message(e.message,true)}}
+$('applicant').onchange=()=>loadResumes().catch(e=>message(e.message,true));
+$('upload').onclick=async()=>{try{if(!$('file').files.length)throw Error('Select a resume first.');const data=new FormData();data.append('file',$('file').files[0]);const result=await request(`/api/applicants/${$('applicant').value}/resumes`,{method:'POST',body:data});await loadResumes();$('resume').value=result.id;message('Resume uploaded.');}catch(e){message(e.message,true)}};
+$('review').onclick=()=>{if(!$('job').value||!$('resume').value){message('Choose a job and upload or select a resume.',true);return;} $('summary').textContent=`Applicant: ${$('applicant').selectedOptions[0].textContent}
+Job: ${$('job').selectedOptions[0].textContent}
+Resume: ${$('resume').selectedOptions[0].textContent}
+Cover letter: ${$('letter').value||'(none)'}`;$('confirmation').hidden=false;};
+$('cancel').onclick=()=>{$('confirmation').hidden=true;};
+$('confirm').onclick=async()=>{const button=$('confirm');button.disabled=true;try{const body={applicantId:Number($('applicant').value),jobPostingId:Number($('job').value),resumeId:Number($('resume').value),coverLetter:$('letter').value};const result=await request('/api/applications',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});$('confirmation').hidden=true;$('success').hidden=false;$('receipt').textContent=`Application #${result.applicationId} saved with stage ${result.stage}.`;$('history').href=`/applications.html?applicantId=${body.applicantId}`;message('Saved to backend database.');}catch(e){message(e.message,true)}finally{button.disabled=false}};
+init();
+</script></body></html>

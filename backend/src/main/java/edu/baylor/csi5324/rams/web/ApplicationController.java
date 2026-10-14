@@ -4,6 +4,10 @@ import edu.baylor.csi5324.rams.domain.ApplicationSummary;
 import edu.baylor.csi5324.rams.service.ApplicationService;
 
 import org.springframework.web.bind.annotation.*;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import java.util.List;
 
 @RestController
 @RequestMapping("/api/applications")
@@ -15,6 +19,20 @@ public class ApplicationController {
 
     public ApplicationController(ApplicationService applicationService) {
         this.applicationService = applicationService;
+    }
+
+    /** Submit Job Application: POST persists a new record. */
+    @PostMapping
+    public ResponseEntity<SubmittedApplicationResponse> submit(
+            @Valid @RequestBody SubmitApplicationRequest request) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(applicationService.submitApplication(request));
+    }
+
+    /** My Applications: GET re-reads records from the database. */
+    @GetMapping
+    public List<SubmittedApplicationResponse> list(@RequestParam Long applicantId) {
+        return applicationService.listApplications(applicantId);
     }
 
     @GetMapping("/{applicationId}/offer")

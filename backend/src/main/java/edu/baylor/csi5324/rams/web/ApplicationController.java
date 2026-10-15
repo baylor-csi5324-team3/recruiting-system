@@ -56,7 +56,7 @@ public class ApplicationController {
     }
 
     // Retrieve all applications for an applicant.
-    @GetMapping
+    @GetMapping("/tracking")
     public List<ApplicationSummary> getApplications(
             @RequestHeader(APPLICANT_HEADER) Long applicantId) {
 

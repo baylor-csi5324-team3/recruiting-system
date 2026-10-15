@@ -21,26 +21,6 @@ public class ApplicationController {
         this.applicationService = applicationService;
     }
 
-    // Retrieve all applications for an applicant.
-    @GetMapping("/tracking")
-    public List<ApplicationSummary> getApplications(
-            @RequestHeader(APPLICANT_HEADER) Long applicantId) {
-
-        return applicationService.getApplicationsByApplicant(applicantId);
-    }
-
-    // Retrieve a selected application's details.
-    @GetMapping("/{applicationId}")
-    public ApplicationSummary getApplicationDetails(
-            @PathVariable Long applicationId,
-            @RequestHeader(APPLICANT_HEADER) Long applicantId) {
-
-        return applicationService.getApplicationDetails(
-                applicationId,
-                applicantId
-        );
-    }
-
     /** Submit Job Application: POST persists a new record. */
     @PostMapping
     public ResponseEntity<SubmittedApplicationResponse> submit(

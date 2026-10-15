@@ -6,6 +6,8 @@ import java.util.List;
 
 public interface ApplicationRepository
         extends JpaRepository<Application, Long> {
+
+    List<Application> findByApplicantId(Long applicantId);
     boolean existsByApplicantIdAndJobPostingId(Long applicantId, Long jobPostingId);
     List<Application> findByApplicantIdOrderBySubmitDateDesc(Long applicantId);
 }

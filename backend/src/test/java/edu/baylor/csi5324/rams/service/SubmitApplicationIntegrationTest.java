@@ -6,6 +6,7 @@ import edu.baylor.csi5324.rams.web.SubmitApplicationRequest;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,15 +28,20 @@ class SubmitApplicationIntegrationTest {
     @Autowired CompanyRepository companies;
     @Autowired RecruiterRepository recruiters;
     @Autowired JobPostingRepository jobs;
+    @Autowired PasswordEncoder encoder;
 
     @Test
     void submitPersistsRecordAndHistoryReadsSameApplication() {
         UserAccount account = accounts.save(new UserAccount(
-                "submit-integration@example.com", Role.APPLICANT, AccountStatus.ACTIVE));
+                "submit-integration@example.com", encoder.encode("Applicant test password"),
+                Role.APPLICANT, AccountStatus.ACTIVE));
         Applicant applicant = applicants.save(new Applicant("Integration Applicant", account));
         Resume resume = resumes.save(new Resume(applicant, "resume.pdf", new byte[] {1, 2, 3}));
         Company company = companies.save(new Company("Integration Co"));
-        Recruiter recruiter = recruiters.save(new Recruiter("Integration Recruiter", company));
+        UserAccount recruiterAccount = accounts.save(new UserAccount(
+                "submit-integration-recruiter@example.com", encoder.encode("Recruiter test password"),
+                Role.RECRUITER, AccountStatus.ACTIVE));
+        Recruiter recruiter = recruiters.save(new Recruiter("Integration Recruiter", recruiterAccount, company));
         JobPosting job = new JobPosting(new PostingDetails("Integration Job", "Integration description",
                 "Waco, TX", "FULL_TIME", LocalDate.now().plusYears(2)),
                 recruiter, LocalDateTime.now());

@@ -1,0 +1,4 @@
+import { createFileRoute } from '@tanstack/react-router';
+import { ExploreJobs } from '@/features/recruiting/jobs';
+export const Route = createFileRoute('/saved')({ head: () => ({ meta: [{ title: 'Saved Jobs | Verdant Recruiting' }, { name: 'description', content: 'Keep your favorite opportunities together in your Verdant shortlist.' }, { property: 'og:title', content: 'Saved Jobs | Verdant Recruiting' }, { property: 'og:description', content: 'Your career shortlist, ready for your next move.' }, { property: 'og:type', content: 'website' }, { name: 'twitter:card', content: 'summary_large_image' }] }), component: SavedPage });
+function SavedPage() { return <ExploreJobs savedOnly />; }

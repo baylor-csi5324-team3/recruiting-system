@@ -23,7 +23,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Clock;
 import java.time.LocalDateTime;
-import java.util.List;
 
 @Service
 @Transactional
@@ -105,6 +104,36 @@ public class ApplicationService {
         }
         return applicant;
     }
+
+    // Track application stage
+    // Retrieve all applications belonging to the applicant
+    @Transactional(readOnly = true)
+    public List<ApplicationSummary> getApplicationsByApplicant(
+            Long applicantId) {
+
+        // Verify that the applicant exists and has an active account.
+        validateApplicant(applicantId);
+
+        // Retrieve the applicant's applications and return their summaries.
+        return applications.findByApplicantId(applicantId)
+                .stream()
+                .map(Application::getDetails)
+                .toList();
+    }
+
+    // Retrieve the details of a selected application.
+    @Transactional(readOnly = true)
+    public ApplicationSummary getApplicationDetails(
+            Long applicationId,
+            Long applicantId) {
+
+        // Use the existing method to verify ownership.
+        Application application =
+                findOwnedApplication(applicationId, applicantId);
+
+        return application.getDetails();
+    }
+
 
     // Track application stage
     // Retrieve all applications belonging to the applicant

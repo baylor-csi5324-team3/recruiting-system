@@ -55,6 +55,26 @@ public class ApplicationController {
         return applicationService.listApplications(applicantId);
     }
 
+    // Retrieve all applications for an applicant.
+    @GetMapping
+    public List<ApplicationSummary> getApplications(
+            @RequestHeader(APPLICANT_HEADER) Long applicantId) {
+
+        return applicationService.getApplicationsByApplicant(applicantId);
+    }
+
+    // Retrieve a selected application's details.
+    @GetMapping("/{applicationId}")
+    public ApplicationSummary getApplicationDetails(
+            @PathVariable Long applicationId,
+            @RequestHeader(APPLICANT_HEADER) Long applicantId) {
+
+        return applicationService.getApplicationDetails(
+                applicationId,
+                applicantId
+        );
+    }
+
     @GetMapping("/{applicationId}/offer")
     public ApplicationSummary viewOffer(
             @PathVariable Long applicationId,

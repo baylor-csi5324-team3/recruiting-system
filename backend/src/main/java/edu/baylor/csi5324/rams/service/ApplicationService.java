@@ -105,6 +105,35 @@ public class ApplicationService {
         return applicant;
     }
 
+    // Track application stage
+    // Retrieve all applications belonging to the applicant
+    @Transactional(readOnly = true)
+    public List<ApplicationSummary> getApplicationsByApplicant(
+            Long applicantId) {
+
+        // Verify that the applicant exists and has an active account.
+        validateApplicant(applicantId);
+
+        // Retrieve the applicant's applications and return their summaries.
+        return applications.findByApplicantId(applicantId)
+                .stream()
+                .map(Application::getDetails)
+                .toList();
+    }
+
+    // Retrieve the details of a selected application.
+    @Transactional(readOnly = true)
+    public ApplicationSummary getApplicationDetails(
+            Long applicationId,
+            Long applicantId) {
+
+        // Use the existing method to verify ownership.
+        Application application =
+                findOwnedApplication(applicationId, applicantId);
+
+        return application.getDetails();
+    }
+
     // 对应顺序图：getOfferedApplication() → getDetails()。
     @Transactional(readOnly = true)
     public ApplicationSummary getOfferedApplication(
@@ -187,5 +216,26 @@ public class ApplicationService {
         }
 
         return application;
+    }
+
+    // Verify an applicant exists and has an active account.
+    private Applicant validateApplicant(Long applicantId) {
+
+        Applicant applicant = applicants.findById(applicantId)
+                .orElseThrow(() -> new NotFoundException(
+                        "No applicant with id " + applicantId + "."
+                ));
+
+        UserAccount account = applicant.getAccount();
+
+        if (account == null
+                || account.getRole() != Role.APPLICANT
+                || account.getStatus() != AccountStatus.ACTIVE) {
+            throw new ValidationException(
+                    "An active applicant account is required."
+            );
+        }
+
+        return applicant;
     }
 }

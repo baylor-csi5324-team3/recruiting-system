@@ -20,7 +20,8 @@ import edu.baylor.csi5324.rams.repository.ApplicantRepository;
 import edu.baylor.csi5324.rams.repository.ApplicationRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-
+import edu.baylor.csi5324.rams.domain.Recruiter;
+import edu.baylor.csi5324.rams.repository.RecruiterRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
 
@@ -33,19 +34,22 @@ public class ApplicationService {
     private final Clock clock;
     private final JobPostingRepository jobs;
     private final ResumeRepository resumes;
+    private final RecruiterRepository recruiters;
 
     public ApplicationService(
             ApplicationRepository applications,
             ApplicantRepository applicants,
             Clock clock,
             JobPostingRepository jobs,
-            ResumeRepository resumes) {
+            ResumeRepository resumes,
+            RecruiterRepository recruiters) {
 
         this.applications = applications;
         this.applicants = applicants;
         this.clock = clock;
         this.jobs = jobs;
         this.resumes = resumes;
+        this.recruiters = recruiters;
     }
 
     /**
@@ -133,55 +137,69 @@ public class ApplicationService {
 
         return application.getDetails();
     }
-
-    // 对应顺序图：getOfferedApplication() → getDetails()。
-    @Transactional(readOnly = true)
-    public ApplicationSummary getOfferedApplication(
-            Long applicationId,
-            Long applicantId) {
-
-        Application application =
-                findOwnedApplication(applicationId, applicantId);
-
-        return application.getDetails();
-    }
-
-    // Applicant 确认接受或拒绝后，更新申请的 Stage。
+    /**
+     * Update Application Stage.
+     * Only active recruiters from the same company
+     * can update the application stage.
+     */
     public ApplicationSummary updateStage(
             Long applicationId,
-            Long applicantId,
-            String decision) {
+            Long recruiterId,
+            ApplicationStage nextStage) {
 
-        // 先校验输入，避免将非法值当成 DECLINE。
-        if (!"ACCEPT".equals(decision)
-                && !"DECLINE".equals(decision)) {
+
+        // Step 1: Validate requested stage.
+        if (nextStage == null) {
             throw new ValidationException(
-                    "Decision must be ACCEPT or DECLINE."
-            );
+                    "Application stage is required.");
+        }
+        if (applicationId == null || recruiterId == null) {
+            throw new ValidationException(
+                    "Application ID and Recruiter ID are required.");
+        }
+        // Step 2: Find the recruiter.
+        Recruiter recruiter = recruiters.findById(recruiterId)
+                .orElseThrow(() ->
+                        new NotFoundException("Recruiter not found."));
+
+        // Step 3: Validate recruiter role and account status.
+        UserAccount account = recruiter.getAccount();
+
+        if (account == null
+                || account.getRole() != Role.RECRUITER
+                || account.getStatus() != AccountStatus.ACTIVE) {
+
+            throw new ValidationException(
+                    "An active recruiter account is required.");
         }
 
-        Application application =
-                findOwnedApplication(applicationId, applicantId);
+        // Step 4: Find the application.
+        Application application = applications.findById(applicationId)
+                .orElseThrow(() ->
+                        new NotFoundException("Application not found."));
 
-        if (application.getStage() != ApplicationStage.OFFER) {
+        // Step 5: Verify recruiter belongs to the same company.
+        if (recruiter.getCompany() == null
+                || !application.getJobPosting()
+                .belongsTo(recruiter.getCompany())) {
+
             throw new ValidationException(
-                    "Only an application in OFFER stage can be accepted or declined."
-            );
+                    "The application belongs to another company.");
         }
 
-        ApplicationStage nextStage = "ACCEPT".equals(decision)
-                ? ApplicationStage.ACCEPTED
-                : ApplicationStage.DECLINED;
+        // Step 6: Update application stage.
+        try {
+            application.updateStage(
+                    nextStage,
+                    LocalDateTime.now(clock),
+                    account.getId());
 
-        // 对应顺序图：recordStage(ACCEPTED / DECLINED)。
-        application.recordStage(
-                nextStage,
-                LocalDateTime.now(clock)
-        );
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new ValidationException(e.getMessage());
+        }
 
-        applications.saveAndFlush(application);
-
-        return application.getDetails();
+        // Step 7: Save the updated application.
+        return applications.saveAndFlush(application).getDetails();
     }
 
     // 查询申请，同时校验账号状态和申请归属。

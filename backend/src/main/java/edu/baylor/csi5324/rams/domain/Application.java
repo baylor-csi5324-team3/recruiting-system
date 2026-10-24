@@ -34,7 +34,7 @@ public class Application {
     @Column(nullable = false)
     private LocalDateTime submitDate;
 
-    private LocalDateTime respondedAt;
+    private LocalDateTime stageUpdatedAt;
 
     @ElementCollection
     @CollectionTable(
@@ -132,40 +132,70 @@ public class Application {
         this.stage = ApplicationStage.OFFER;
     }
 
-    public void recordStage(
+    /**
+     * Updates the application stage.
+     * Recruitment activities are handled outside the system.
+     */
+    public void updateStage(
             ApplicationStage nextStage,
-            LocalDateTime respondedAt) {
+            LocalDateTime changedAt) {
+        updateStage(nextStage, changedAt, null);
+    }
 
-        if (stage != ApplicationStage.OFFER) {
-            throw new IllegalStateException(
-                    "Only an application in OFFER stage can be accepted or declined."
-            );
-        }
+    public void updateStage(
+            ApplicationStage nextStage,
+            LocalDateTime changedAt,
+            Long changedByUserId) {
 
-        if (nextStage != ApplicationStage.ACCEPTED
-                && nextStage != ApplicationStage.DECLINED) {
+        if (nextStage == null) {
             throw new IllegalArgumentException(
-                    "The response stage must be ACCEPTED or DECLINED."
-            );
+                    "Application stage is required.");
         }
 
-        if (respondedAt == null) {
-            throw new IllegalArgumentException("Response time is required.");
+        if (changedAt == null) {
+            throw new IllegalArgumentException(
+                    "Stage update time is required.");
         }
 
-        Long changedByUserId =
-                applicant != null && applicant.getAccount() != null
-                        ? applicant.getAccount().getId()
-                        : null;
+        boolean allowed = switch (stage) {
+            case SUBMITTED ->
+                    nextStage == ApplicationStage.UNDER_REVIEW
+                            || nextStage == ApplicationStage.REJECTED
+                            || nextStage == ApplicationStage.WITHDRAWN;
+
+            case UNDER_REVIEW ->
+                    nextStage == ApplicationStage.INTERVIEW
+                            || nextStage == ApplicationStage.OFFER
+                            || nextStage == ApplicationStage.REJECTED
+                            || nextStage == ApplicationStage.WITHDRAWN;
+
+            case INTERVIEW ->
+                    nextStage == ApplicationStage.OFFER
+                            || nextStage == ApplicationStage.REJECTED
+                            || nextStage == ApplicationStage.WITHDRAWN;
+
+            case OFFER ->
+                    nextStage == ApplicationStage.ACCEPTED
+                            || nextStage == ApplicationStage.DECLINED
+                            || nextStage == ApplicationStage.WITHDRAWN;
+
+            case ACCEPTED, DECLINED, REJECTED, WITHDRAWN -> false;
+        };
+
+        if (!allowed) {
+            throw new IllegalStateException(
+                    "Invalid application stage transition: "
+                            + stage + " -> " + nextStage);
+        }
 
         appendStageRecord(
                 nextStage,
-                respondedAt,
+                changedAt,
                 changedByUserId
         );
 
         this.stage = nextStage;
-        this.respondedAt = respondedAt;
+        this.stageUpdatedAt = changedAt;
     }
 
     public void startReview() {
@@ -237,8 +267,8 @@ public class Application {
         return submitDate;
     }
 
-    public LocalDateTime getRespondedAt() {
-        return respondedAt;
+    public LocalDateTime getStageUpdatedAt() {
+        return stageUpdatedAt;
     }
 
     public Long getVersion() {

@@ -191,7 +191,8 @@ public class ApplicationService {
         try {
             application.updateStage(
                     nextStage,
-                    LocalDateTime.now(clock));
+                    LocalDateTime.now(clock),
+                    account.getId());
 
         } catch (IllegalArgumentException | IllegalStateException e) {
             throw new ValidationException(e.getMessage());

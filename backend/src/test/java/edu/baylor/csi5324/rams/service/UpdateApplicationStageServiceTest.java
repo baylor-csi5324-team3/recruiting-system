@@ -134,8 +134,9 @@ class UpdateApplicationStageServiceTest {
         assertEquals(expected, actual);
 
         verify(application).updateStage(
-                ApplicationStage.UNDER_REVIEW,
-                NOW);
+                eq(ApplicationStage.UNDER_REVIEW),
+                eq(NOW),
+                isNull());
 
         verify(applications).saveAndFlush(application);
     }

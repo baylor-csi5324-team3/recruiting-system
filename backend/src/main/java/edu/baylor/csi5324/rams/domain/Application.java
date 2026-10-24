@@ -32,7 +32,7 @@ public class Application {
     @Column(nullable = false)
     private LocalDateTime submitDate;
 
-    private LocalDateTime respondedAt;
+    private LocalDateTime stageUpdatedAt;
 
     /** Snapshot of the resume at submission; later resume edits cannot change it. */
     private String resumeFilename;
@@ -83,52 +83,62 @@ public class Application {
                 && applicant.getId().equals(this.applicant.getId());
     }
 
-    // 招聘者发出 Offer；身份及公司权限由 Service 检查。
-    public void makeOffer() {
-        if (stage != ApplicationStage.UNDER_REVIEW
-                && stage != ApplicationStage.INTERVIEW) {
-            throw new IllegalStateException(
-                    "An offer can only be made after review or interview."
-            );
-        }
 
-        this.stage = ApplicationStage.OFFER;
-    }
 
-    public void recordStage(
+    /**
+     * Updates the application stage.
+     * Recruitment activities are handled outside the system.
+     */
+    public void updateStage(
             ApplicationStage nextStage,
-            LocalDateTime respondedAt) {
+            LocalDateTime changedAt) {
 
-        if (stage != ApplicationStage.OFFER) {
-            throw new IllegalStateException(
-                    "Only an application in OFFER stage can be accepted or declined."
-            );
-        }
-
-        if (nextStage != ApplicationStage.ACCEPTED
-                && nextStage != ApplicationStage.DECLINED) {
+        if (nextStage == null) {
             throw new IllegalArgumentException(
-                    "The response stage must be ACCEPTED or DECLINED."
-            );
+                    "Application stage is required.");
         }
 
-        if (respondedAt == null) {
-            throw new IllegalArgumentException("Response time is required.");
+        if (changedAt == null) {
+            throw new IllegalArgumentException(
+                    "Stage update time is required.");
+        }
+
+        boolean allowed = switch (stage) {
+            case SUBMITTED ->
+                    nextStage == ApplicationStage.UNDER_REVIEW
+                            || nextStage == ApplicationStage.REJECTED
+                            || nextStage == ApplicationStage.WITHDRAWN;
+
+            case UNDER_REVIEW ->
+                    nextStage == ApplicationStage.INTERVIEW
+                            || nextStage == ApplicationStage.OFFER
+                            || nextStage == ApplicationStage.REJECTED
+                            || nextStage == ApplicationStage.WITHDRAWN;
+
+            case INTERVIEW ->
+                    nextStage == ApplicationStage.OFFER
+                            || nextStage == ApplicationStage.REJECTED
+                            || nextStage == ApplicationStage.WITHDRAWN;
+
+            case OFFER ->
+                    nextStage == ApplicationStage.ACCEPTED
+                            || nextStage == ApplicationStage.DECLINED
+                            || nextStage == ApplicationStage.WITHDRAWN;
+
+            case ACCEPTED, DECLINED, REJECTED, WITHDRAWN -> false;
+        };
+
+        if (!allowed) {
+            throw new IllegalStateException(
+                    "Invalid application stage transition: "
+                            + stage + " -> " + nextStage);
         }
 
         this.stage = nextStage;
-        this.respondedAt = respondedAt;
+        this.stageUpdatedAt = changedAt;
     }
 
-    public void startReview() {
-        if (stage != ApplicationStage.SUBMITTED) {
-            throw new IllegalStateException(
-                    "Only a submitted application can enter review."
-            );
-        }
 
-        this.stage = ApplicationStage.UNDER_REVIEW;
-    }
 
     public ApplicationSummary getDetails() {
         return ApplicationSummary.from(this);
@@ -154,8 +164,8 @@ public class Application {
         return submitDate;
     }
 
-    public LocalDateTime getRespondedAt() {
-        return respondedAt;
+    public LocalDateTime getStageUpdatedAt() {
+        return stageUpdatedAt;
     }
 
     public Long getVersion() {

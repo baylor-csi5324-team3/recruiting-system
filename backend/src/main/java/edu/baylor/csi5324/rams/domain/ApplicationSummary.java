@@ -7,8 +7,7 @@ public record ApplicationSummary(
         String jobTitle,
         String companyName,
         ApplicationStage stage,
-        LocalDateTime respondedAt
-) {
+        LocalDateTime stageUpdatedAt) {
 
     public static ApplicationSummary from(Application application) {
         return new ApplicationSummary(
@@ -16,7 +15,7 @@ public record ApplicationSummary(
                 application.getJobPosting().getTitle(),
                 application.getJobPosting().getCompany().getName(),
                 application.getStage(),
-                application.getRespondedAt()
+                application.getStageUpdatedAt()
         );
     }
 }

@@ -25,7 +25,7 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
-
+import edu.baylor.csi5324.rams.domain.ApplicationStage;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -105,8 +105,8 @@ public class DevDataSeeder {
             return;
         }
         Application application = new Application(applicant, job, now);
-        application.startReview();
-        application.makeOffer();
+        application.updateStage(ApplicationStage.UNDER_REVIEW, now);
+        application.updateStage(ApplicationStage.OFFER, now);
         applications.save(application);
         log.info("Offer test data: applicantId={}, applicationId={}, jobPostingId={}",
                 applicant.getId(), application.getId(), job.getId());

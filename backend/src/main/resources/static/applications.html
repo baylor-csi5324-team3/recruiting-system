@@ -27,6 +27,16 @@
     }
 
     async function viewDetails(applicationId, container, button, applicantId) {
+        if (!container.hidden) {
+            container.hidden = true;
+            button.textContent = "View Details";
+            button.setAttribute("aria-expanded", "false");
+            return;
+        }
+
+        container.hidden = false;
+        button.setAttribute("aria-expanded", "true");
+
         container.replaceChildren();
         button.disabled = true;
         button.textContent = "Loading...";
@@ -76,7 +86,7 @@
             container.append(message);
         } finally {
             button.disabled = false;
-            button.textContent = "View Details";
+            button.textContent = "Hide Details";
         }
     }
 
@@ -124,6 +134,7 @@
                 article.append(stage);
 
                 const details = document.createElement("div");
+                details.hidden = true;
 
                 const button = document.createElement("button");
                 button.type = "button";

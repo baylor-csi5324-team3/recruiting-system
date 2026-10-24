@@ -136,7 +136,7 @@ class UpdateApplicationStageServiceTest {
         verify(application).updateStage(
                 eq(ApplicationStage.UNDER_REVIEW),
                 eq(NOW),
-                isNull());
+                any());
 
         verify(applications).saveAndFlush(application);
     }
@@ -232,7 +232,7 @@ class UpdateApplicationStageServiceTest {
                         15L, 7L, ApplicationStage.OFFER));
 
         verify(application, never())
-                .updateStage(any(), any());
+                .updateStage(any(), any(), any());
 
         verify(applications, never())
                 .saveAndFlush(any());
@@ -294,7 +294,7 @@ class UpdateApplicationStageServiceTest {
         doThrow(new IllegalStateException(
                 "Invalid application stage transition"))
                 .when(application)
-                .updateStage(ApplicationStage.ACCEPTED, NOW);
+                .updateStage(eq(ApplicationStage.ACCEPTED), eq(NOW), any());
 
         assertThrows(
                 ValidationException.class,

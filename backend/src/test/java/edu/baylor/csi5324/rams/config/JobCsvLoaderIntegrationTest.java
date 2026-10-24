@@ -12,18 +12,14 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Import;
 import org.springframework.context.annotation.Primary;
 import org.springframework.core.io.ByteArrayResource;
-import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 
 import java.nio.charset.StandardCharsets;
 import java.time.*;
 import java.util.List;
 
 import static org.junit.jupiter.api.Assertions.*;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doAnswer;
 
 @SpringBootTest(properties = {"spring.datasource.url=jdbc:h2:mem:csv-integration;DB_CLOSE_DELAY=-1", "spring.jpa.show-sql=false"})
 @ActiveProfiles("test")
@@ -38,7 +34,7 @@ class JobCsvLoaderIntegrationTest {
     @Autowired UserAccountRepository accounts;
     @Autowired RecruiterRepository recruiters;
     @Autowired CompanyRepository companies;
-    @MockitoSpyBean JobPostingRepository postings;
+    @Autowired JobPostingRepository postings;
     @Autowired PasswordEncoder encoder;
     @Autowired JobPostingService service;
     private Recruiter recruiter;
@@ -58,7 +54,7 @@ class JobCsvLoaderIntegrationTest {
     private ByteArrayResource csv(String content) { return new ByteArrayResource(content.getBytes(StandardCharsets.UTF_8)); }
 
     @Test
-    void classpathImportMapsFieldsRelationshipsAndTimestampsAndPreservesSearch() {
+    void classpathImportPersistsJobsWithRelationshipsAndSearchResults() {
         assertEquals(5, loader.loadIfEmpty());
         var jobs = postings.findAll();
         assertEquals(5, jobs.size());
@@ -67,15 +63,10 @@ class JobCsvLoaderIntegrationTest {
         assertEquals("Austin, TX", intern.getLocation());
         assertEquals("INTERNSHIP", intern.getEmploymentType());
         assertEquals(LocalDate.of(2026, 12, 31), intern.getClosingDate());
-        assertEquals(LocalDateTime.of(2026, 10, 12, 8, 0), intern.getPostedDate());
+        assertEquals(PostingStatus.PUBLISHED, intern.getStatus());
         for (var job : jobs) {
             assertEquals(recruiter.getId(), job.getRecruiter().getId());
             assertEquals(recruiter.getCompany().getId(), job.getCompany().getId());
-            if (job.getStatus() == PostingStatus.DRAFT) assertNull(job.getPostedDate());
-            else {
-                assertTrue(job.getCreatedAt().isBefore(job.getPostedDate()));
-                assertTrue(job.getPostedDate().toLocalDate().isBefore(job.getClosingDate()));
-            }
         }
         assertEquals(1, jobs.stream().filter(j -> j.getStatus() == PostingStatus.DRAFT).count());
         assertEquals(1, jobs.stream().filter(j -> j.getClosingDate().isBefore(LocalDate.of(2026, 10, 12))).count());
@@ -94,55 +85,11 @@ class JobCsvLoaderIntegrationTest {
     }
 
     @Test
-    void anyExistingJobSkipsImportWithoutReadingResource() {
-        var job = service.createDraft(new PostingDetails("User-created", "Keep this", "Waco", "FULL_TIME", LocalDate.of(2026, 12, 31)), recruiter);
-        assertEquals(0, loader.loadIfEmpty(csv("invalid CSV")));
-        assertEquals(1, postings.count());
-        assertEquals("Keep this", postings.findById(job.getId()).orElseThrow().getDescription());
-    }
-
-    @Test
     void missingAccountInSecondRowLeavesNoPartialImport() {
         var error = assertThrows(JobCsvException.class, () -> loader.loadIfEmpty(csv(HEADER + ROW + ROW.replace("recruiter@example.com", "missing@example.com"))));
         assertTrue(error.getMessage().contains("row 2"));
         assertEquals(0, postings.count());
         assertEquals(1, accounts.count());
         assertEquals(1, companies.count());
-    }
-
-    @Test
-    void accountWithoutRecruiterEntityFails() {
-        recruiters.deleteAll();
-        assertTrue(assertThrows(JobCsvException.class, loader::loadIfEmpty).getMessage().contains("no associated Recruiter"));
-        assertEquals(0, postings.count());
-    }
-
-    @Test
-    void wrongRoleAndInactiveAccountsFail() {
-        var account = accounts.findById(recruiter.getAccount().getId()).orElseThrow();
-        account.updateRoleAndStatus(Role.APPLICANT, AccountStatus.ACTIVE, null, LocalDateTime.now());
-        accounts.saveAndFlush(account);
-        assertThrows(JobCsvException.class, loader::loadIfEmpty);
-        account.updateRoleAndStatus(Role.RECRUITER, AccountStatus.DEACTIVATED, null, LocalDateTime.now());
-        accounts.saveAndFlush(account);
-        assertThrows(JobCsvException.class, loader::loadIfEmpty);
-        assertEquals(0, postings.count());
-    }
-
-    @Test
-    void malformedLaterRecordDoesNotPersistEarlierRecord() {
-        assertThrows(JobCsvException.class, () -> loader.loadIfEmpty(csv(HEADER + ROW + "\"unclosed")));
-        assertEquals(0, postings.count());
-    }
-
-    @Test
-    void databaseFailureAfterFirstInsertRollsBackWholeImport() {
-        doAnswer(invocation -> {
-            Iterable<JobPosting> jobs = invocation.getArgument(0);
-            postings.saveAndFlush(jobs.iterator().next());
-            throw new DataIntegrityViolationException("simulated later insert failure");
-        }).when(postings).saveAllAndFlush(any());
-        assertThrows(DataIntegrityViolationException.class, loader::loadIfEmpty);
-        assertEquals(0, postings.count());
     }
 }

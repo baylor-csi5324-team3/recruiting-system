@@ -2,7 +2,6 @@ package edu.baylor.csi5324.rams.web;
 
 import edu.baylor.csi5324.rams.domain.ApplicationSummary;
 import edu.baylor.csi5324.rams.service.ApplicationService;
-
 import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -14,6 +13,7 @@ import java.util.List;
 public class ApplicationController {
 
     public static final String APPLICANT_HEADER = "X-Applicant-Id";
+    public static final String RECRUITER_HEADER = "X-Recruiter-Id";
 
     private final ApplicationService applicationService;
 
@@ -55,27 +55,23 @@ public class ApplicationController {
         );
     }
 
-    @GetMapping("/{applicationId}/offer")
-    public ApplicationSummary viewOffer(
+    /**
+     * Update Application Stage.
+     * Only recruiters can update the stage of
+     * applications belonging to their company.
+     */
+    @PatchMapping("/{applicationId}/stage")
+    public ApplicationSummary updateApplicationStage(
             @PathVariable Long applicationId,
-            @RequestHeader(APPLICANT_HEADER) Long applicantId) {
-
-        return applicationService.getOfferedApplication(
-                applicationId,
-                applicantId
-        );
-    }
-
-    @PostMapping("/{applicationId}/offer-response")
-    public ApplicationSummary respondToJobOffer(
-            @PathVariable Long applicationId,
-            @RequestHeader(APPLICANT_HEADER) Long applicantId,
-            @RequestBody OfferResponseRequest request) {
+            @RequestHeader(RECRUITER_HEADER) Long recruiterId,
+            @Valid @RequestBody UpdateApplicationStageRequest request) {
 
         return applicationService.updateStage(
                 applicationId,
-                applicantId,
-                request.decision()
+                recruiterId,
+                request.stage()
         );
     }
+
+
 }

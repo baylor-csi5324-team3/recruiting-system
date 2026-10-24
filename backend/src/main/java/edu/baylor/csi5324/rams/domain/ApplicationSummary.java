@@ -8,7 +8,7 @@ public record ApplicationSummary(
         String jobTitle,
         String companyName,
         ApplicationStage stage,
-        LocalDateTime respondedAt,
+        LocalDateTime stageUpdatedAt,
         List<StageRecord> stageHistory
 ) {
 
@@ -24,14 +24,14 @@ public record ApplicationSummary(
             String jobTitle,
             String companyName,
             ApplicationStage stage,
-            LocalDateTime respondedAt) {
+            LocalDateTime stageUpdatedAt) {
 
         this(
                 applicationId,
                 jobTitle,
                 companyName,
                 stage,
-                respondedAt,
+                stageUpdatedAt,
                 List.of()
         );
     }
@@ -42,7 +42,7 @@ public record ApplicationSummary(
                 application.getJobPosting().getTitle(),
                 application.getJobPosting().getCompany().getName(),
                 application.getStage(),
-                application.getRespondedAt(),
+                application.getStageUpdatedAt(),
                 application.getStageHistory()
         );
     }

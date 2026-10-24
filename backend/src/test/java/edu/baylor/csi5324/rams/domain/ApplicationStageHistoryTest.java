@@ -36,7 +36,7 @@ class ApplicationStageHistoryTest {
 
         application.startReview(reviewedAt, 25L);
         application.makeOffer(offeredAt, 25L);
-        application.recordStage(ApplicationStage.ACCEPTED, acceptedAt);
+        application.updateStage(ApplicationStage.ACCEPTED, acceptedAt, 25L);
 
         List<StageRecord> history = application.getStageHistory();
 
@@ -58,7 +58,7 @@ class ApplicationStageHistoryTest {
         assertEquals(Long.valueOf(25L), history.get(1).getChangedByUserId());
         assertEquals(Long.valueOf(25L), history.get(2).getChangedByUserId());
         assertEquals(ApplicationStage.ACCEPTED, application.getStage());
-        assertEquals(acceptedAt, application.getRespondedAt());
+        assertEquals(acceptedAt, application.getStageUpdatedAt());
     }
 
     @Test
@@ -84,8 +84,8 @@ class ApplicationStageHistoryTest {
 
         // An offer response can only be ACCEPTED or DECLINED.
         assertThrows(
-                IllegalArgumentException.class,
-                () -> application.recordStage(
+                IllegalStateException.class,
+                () -> application.updateStage(
                         ApplicationStage.INTERVIEW,
                         SUBMITTED_AT.plusHours(3)
                 )
@@ -93,6 +93,6 @@ class ApplicationStageHistoryTest {
 
         assertEquals(ApplicationStage.OFFER, application.getStage());
         assertEquals(offeredHistory, application.getStageHistory());
-        assertNull(application.getRespondedAt());
+        assertNull(application.getStageUpdatedAt());
     }
 }

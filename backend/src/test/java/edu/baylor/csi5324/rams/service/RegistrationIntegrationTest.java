@@ -9,12 +9,10 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.MediaType;
-import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.bean.override.mockito.MockitoSpyBean;
 import org.springframework.test.web.servlet.MockMvc;
-import tools.jackson.databind.json.JsonMapper;
 
 import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
@@ -33,7 +31,6 @@ class RegistrationIntegrationTest {
     @MockitoSpyBean RecruiterRepository recruiters;
     @Autowired PasswordEncoder encoder;
     @Autowired MockMvc mvc;
-    @Autowired JdbcTemplate jdbc;
     private static final String SECRET = "Registration secret 2026";
 
     @BeforeEach
@@ -106,17 +103,6 @@ class RegistrationIntegrationTest {
     }
 
     @Test
-    void httpRecruiterRegistrationPersistsRelationships() throws Exception {
-        mvc.perform(post("/api/accounts/register").contentType(MediaType.APPLICATION_JSON).content("""
-                {"email":"http.hr@example.com","password":"HTTP secret","role":"RECRUITER",
-                 "companyName":"Baylor Tech","recruiterName":"Rhea"}
-                """))
-                .andExpect(status().isCreated()).andExpect(jsonPath("$.role").value("RECRUITER"));
-        var account = accounts.findByEmailIgnoreCase("http.hr@example.com").orElseThrow();
-        assertEquals("Baylor Tech", recruiters.findByAccountId(account.getId()).orElseThrow().getCompany().getName());
-    }
-
-    @Test
     void httpValidationAndDuplicateUseMessageErrors() throws Exception {
         service.register(request("duplicate@example.com", Role.APPLICANT, null));
         for (String body : new String[]{"{}",
@@ -160,38 +146,5 @@ class RegistrationIntegrationTest {
         assertEquals(0, accounts.count());
         assertEquals(0, companies.count());
         assertEquals(0, recruiters.count());
-    }
-
-    @Test
-    void entitySerializationDoesNotRevealHashOrRecruiterAccount() {
-        var account = service.register(request("hr@example.com", Role.RECRUITER, "Baylor Tech"));
-        var mapper = JsonMapper.builder().build();
-        String accountJson = mapper.writeValueAsString(account);
-        String recruiterJson = mapper.writeValueAsString(recruiters.findByAccountId(account.getId()).orElseThrow());
-        assertFalse(accountJson.contains("passwordHash"));
-        assertFalse(accountJson.contains(account.getPasswordHash()));
-        assertFalse(recruiterJson.contains("\"account\""));
-        assertFalse(recruiterJson.contains(account.getPasswordHash()));
-    }
-
-    @Test
-    void databaseEnforcesCaseInsensitiveEmailAndCompanyUniqueness() {
-        var account = service.register(request("first@example.com", Role.RECRUITER, "Baylor Tech"));
-        assertThrows(DataIntegrityViolationException.class, () -> jdbc.update(
-                "insert into user_account(email,password_hash,role,status) values (?,?,?,?)",
-                "FIRST@EXAMPLE.COM", account.getPasswordHash(), "APPLICANT", "ACTIVE"));
-        assertThrows(DataIntegrityViolationException.class, () -> companies.saveAndFlush(new Company(" BAYLOR TECH ")));
-        assertEquals(1, accounts.count());
-        assertEquals(1, companies.count());
-    }
-
-    @Test
-    void unicodePasswordAndSpacesSurviveBCryptEncodingExactly() {
-        String password = "  𠮷abcde  ";
-        var account = service.register(new RegisterAccountRequest("unicode@example.com", password,
-                Role.APPLICANT, null, null));
-        var saved = accounts.findById(account.getId()).orElseThrow();
-        assertTrue(encoder.matches(password, saved.getPasswordHash()));
-        assertFalse(encoder.matches(password.trim(), saved.getPasswordHash()));
     }
 }

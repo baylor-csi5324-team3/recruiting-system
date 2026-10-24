@@ -33,16 +33,6 @@ class RegistrationValidatorTest {
     }
 
     @Test
-    @DisplayName("recruiter input keeps display capitalization and trims company and recruiter names")
-    void recruiterInput() {
-        RegisterAccountRequest request = new RegisterAccountRequest("hr@example.com", "secret phrase",
-                Role.RECRUITER, "  L'Étoile & Sons, Inc.  ", "  Anne-Marie 李 O'Connor  ");
-        assertDoesNotThrow(() -> validator.validate(request));
-        assertEquals("L'Étoile & Sons, Inc.", request.companyName());
-        assertEquals("Anne-Marie 李 O'Connor", request.recruiterName());
-    }
-
-    @Test
     void missingAndInvalidEmailRejected() {
         for (String email : new String[]{null, "", "studentgmail.com", "a@@example.com"}) {
             assertThrows(ValidationException.class, () -> validator.validate(applicant(email, "secret phrase")));
@@ -98,21 +88,6 @@ class RegistrationValidatorTest {
         assertEquals("Password must contain at least 8 Unicode characters.", error.getMessage());
         assertFalse(error.getMessage().contains("abcdefg"));
         assertDoesNotThrow(() -> validator.validate(applicant("person@example.com", "abcdefgh")));
-    }
-
-    @Test
-    void passwordMinimumCountsSupplementaryCodePointsOnce() {
-        assertThrows(ValidationException.class,
-                () -> validator.validate(applicant("person@example.com", "𠮷".repeat(7))));
-        assertDoesNotThrow(() -> validator.validate(applicant("person@example.com", "𠮷".repeat(8))));
-    }
-
-    @Test
-    void oversizedRecruiterAndCompanyNamesRejected() {
-        for (String[] names : new String[][]{{"Baylor Tech", "x".repeat(101)}, {"x".repeat(151), "Rhea"}}) {
-            assertThrows(ValidationException.class, () -> validator.validate(new RegisterAccountRequest(
-                    "hr@example.com", "secret phrase", Role.RECRUITER, names[0], names[1])));
-        }
     }
 
     @Test

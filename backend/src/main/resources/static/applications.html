@@ -1,7 +1,177 @@
-<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>My Applications</title><style>body{font-family:system-ui,sans-serif;max-width:850px;margin:40px auto;padding:0 18px;background:#f8fafc;color:#172033}main,article{background:white;border:1px solid #dce3ec;border-radius:12px;padding:20px;margin:16px 0}select,button{padding:10px;border-radius:7px}button{background:#205aa0;color:white;border:0;cursor:pointer}.stage{color:#13653e;font-weight:700}.error{color:#a21b29}a{color:#205aa0}</style></head><body><h1>My Applications</h1><p><a href="/submit-application.html">Submit another application</a></p><main><label for="applicant">Applicant: </label><select id="applicant"></select> <button id="refresh">Refresh from server</button><p id="notice" role="status"></p><div id="results"></div></main><script>
-const $=id=>document.getElementById(id);
-async function request(url){const r=await fetch(url);const d=await r.json().catch(()=>({}));if(!r.ok)throw Error(d.message||d.error||`HTTP ${r.status}`);return d;}
-async function refresh(){const container=$('results');container.replaceChildren();try{const items=await request(`/api/applications?applicantId=${$('applicant').value}`);$('notice').textContent=`${items.length} application(s) loaded from backend.`;for(const item of items){const article=document.createElement('article');const heading=document.createElement('h2');heading.textContent=item.jobTitle;article.append(heading);for(const [label,value] of [['Company',item.companyName],['Application ID',item.applicationId],['Job ID',item.jobPostingId],['Resume',item.resumeFilename||'(legacy record)'],['Submitted',item.submittedAt]]){const p=document.createElement('p');p.textContent=`${label}: ${value}`;article.append(p);}const stage=document.createElement('p');stage.className='stage';stage.textContent=`Stage: ${item.stage}`;article.append(stage);container.append(article);}}catch(e){$('notice').textContent=e.message;$('notice').className='error';}}
-async function init(){try{const people=await request('/api/applicants');const selected=new URLSearchParams(location.search).get('applicantId');for(const a of people){const option=document.createElement('option');option.value=a.id;option.textContent=`${a.name} (#${a.id})`;$('applicant').append(option);}if(selected)$('applicant').value=selected;await refresh();}catch(e){$('notice').textContent=e.message;}}
-$('refresh').onclick=refresh;$('applicant').onchange=refresh;init();
+<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>My Applications</title><style>body{font-family:system-ui,sans-serif;max-width:850px;margin:40px auto;padding:0 18px;background:#f8fafc;color:#172033}main,article{background:white;border:1px solid #dce3ec;border-radius:12px;padding:20px;margin:16px 0}select,button{padding:10px;border-radius:7px}button{background:#205aa0;color:white;border:0;cursor:pointer}.stage{color:#13653e;font-weight:700}.error{color:#a21b29}a{color:#205aa0}</style></head><body><h1>My Applications</h1><p><a href="/submit-application.html">Submit another application</a></p><main><label for="applicant">Applicant: </label><select id="applicant"></select> <button id="refresh">Refresh from server</button><p id="notice" role="status"></p><div id="results"></div></main>
+<script>
+    const $ = id => document.getElementById(id);
+    let refreshVersion = 0;
+
+    async function request(url, applicantId) {
+        const options = applicantId
+            ? { headers: { "X-Applicant-Id": applicantId } }
+            : {};
+
+        const response = await fetch(url, options);
+        const data = await response.json().catch(() => ({}));
+
+        if (!response.ok) {
+            throw Error(
+                data.message || data.error || `HTTP ${response.status}`
+            );
+        }
+
+        return data;
+    }
+
+    function addField(container, label, value) {
+        const p = document.createElement("p");
+        p.textContent = `${label}: ${value ?? "Not recorded"}`;
+        container.append(p);
+    }
+
+    async function viewDetails(applicationId, container, button, applicantId) {
+        container.replaceChildren();
+        button.disabled = true;
+        button.textContent = "Loading...";
+
+        try {
+            const application = await request(
+                `/api/applications/${applicationId}`,
+                applicantId
+            );
+
+            const heading = document.createElement("h3");
+            heading.textContent = "Application Details";
+            container.append(heading);
+
+            addField(container, "Job", application.jobTitle);
+            addField(container, "Company", application.companyName);
+            addField(container, "Application ID", application.applicationId);
+            addField(container, "Current stage", application.stage);
+
+            const historyHeading = document.createElement("h3");
+            historyHeading.textContent = "Stage History";
+            container.append(historyHeading);
+
+            const history = application.stageHistory || [];
+
+            if (history.length === 0) {
+                const message = document.createElement("p");
+                message.textContent =
+                    "No stage history is available. The current stage is shown above.";
+                container.append(message);
+            } else {
+                const list = document.createElement("ol");
+
+                for (const record of history) {
+                    const item = document.createElement("li");
+                    item.textContent =
+                        `${record.stage} — ${record.changedAt}`;
+                    list.append(item);
+                }
+
+                container.append(list);
+            }
+        } catch (error) {
+            const message = document.createElement("p");
+            message.className = "error";
+            message.textContent = error.message;
+            container.append(message);
+        } finally {
+            button.disabled = false;
+            button.textContent = "View Details";
+        }
+    }
+
+    async function refresh() {
+        const version = ++refreshVersion;
+        const applicantId = $("applicant").value;
+        const container = $("results");
+
+        container.replaceChildren();
+        $("notice").className = "";
+
+        if (!applicantId) {
+            $("notice").textContent = "No applicant is available.";
+            return;
+        }
+
+        $("notice").textContent = "Loading applications...";
+
+        try {
+            const items = await request(
+                "/api/applications/tracking",
+                applicantId
+            );
+
+            // Ignore an older response if the applicant changed.
+            if (version !== refreshVersion) return;
+
+            $("notice").textContent = items.length
+                ? `${items.length} application(s) loaded from backend.`
+                : "You have no submitted applications.";
+
+            for (const application of items) {
+                const article = document.createElement("article");
+
+                const heading = document.createElement("h2");
+                heading.textContent = application.jobTitle;
+                article.append(heading);
+
+                addField(article, "Company", application.companyName);
+                addField(article, "Application ID", application.applicationId);
+
+                const stage = document.createElement("p");
+                stage.className = "stage";
+                stage.textContent = `Stage: ${application.stage}`;
+                article.append(stage);
+
+                const details = document.createElement("div");
+
+                const button = document.createElement("button");
+                button.type = "button";
+                button.textContent = "View Details";
+                button.onclick = () => viewDetails(
+                    application.applicationId,
+                    details,
+                    button,
+                    applicantId
+                );
+
+                article.append(button, details);
+                container.append(article);
+            }
+        } catch (error) {
+            if (version !== refreshVersion) return;
+
+            $("notice").textContent = error.message;
+            $("notice").className = "error";
+        }
+    }
+
+    async function init() {
+        try {
+            const people = await request("/api/applicants");
+            const selected = new URLSearchParams(location.search)
+                .get("applicantId");
+
+            for (const applicant of people) {
+                const option = document.createElement("option");
+                option.value = applicant.id;
+                option.textContent = `${applicant.name} (#${applicant.id})`;
+                $("applicant").append(option);
+            }
+
+            if (people.some(applicant => String(applicant.id) === selected)) {
+                $("applicant").value = selected;
+            }
+
+            await refresh();
+        } catch (error) {
+            $("notice").textContent = error.message;
+            $("notice").className = "error";
+        }
+    }
+
+    $("refresh").onclick = refresh;
+    $("applicant").onchange = refresh;
+
+    init();
 </script></body></html>

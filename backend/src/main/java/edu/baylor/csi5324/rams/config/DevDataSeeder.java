@@ -105,8 +105,8 @@ public class DevDataSeeder {
             return;
         }
         Application application = new Application(applicant, job, now);
-        application.updateStage(ApplicationStage.UNDER_REVIEW, now);
-        application.updateStage(ApplicationStage.OFFER, now);
+        application.startReview(now, recruiter.getAccount().getId());
+        application.makeOffer(now, recruiter.getAccount().getId());
         applications.save(application);
         log.info("Offer test data: applicantId={}, applicationId={}, jobPostingId={}",
                 applicant.getId(), application.getId(), job.getId());

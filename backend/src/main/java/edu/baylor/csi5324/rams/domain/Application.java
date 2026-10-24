@@ -3,6 +3,8 @@ package edu.baylor.csi5324.rams.domain;
 import jakarta.persistence.*;
 
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
 
 @Entity
 @Table(
@@ -34,6 +36,14 @@ public class Application {
 
     private LocalDateTime stageUpdatedAt;
 
+    @ElementCollection
+    @CollectionTable(
+            name = "application_stage_history",
+            joinColumns = @JoinColumn(name = "application_id")
+    )
+    @OrderColumn(name = "history_position")
+    private List<StageRecord> stageHistory = new ArrayList<>();
+
     /** Snapshot of the resume at submission; later resume edits cannot change it. */
     private String resumeFilename;
 
@@ -58,6 +68,16 @@ public class Application {
         this.jobPosting = jobPosting;
         this.submitDate = submitDate;
         this.stage = ApplicationStage.SUBMITTED;
+        Long submittedByUserId =
+                applicant != null && applicant.getAccount() != null
+                        ? applicant.getAccount().getId()
+                        : null;
+
+        appendStageRecord(
+                ApplicationStage.SUBMITTED,
+                submitDate,
+                submittedByUserId
+        );
     }
 
     /** Steps 7-8: snapshot submitted materials while preserving the existing stage workflow. */
@@ -83,7 +103,34 @@ public class Application {
                 && applicant.getId().equals(this.applicant.getId());
     }
 
+    // 招聘者发出 Offer；身份及公司权限由 Service 检查。
+    public void makeOffer() {
+        makeOffer(LocalDateTime.now(), null);
+    }
 
+    public void makeOffer(
+            LocalDateTime changedAt,
+            Long changedByUserId) {
+
+        if (stage != ApplicationStage.UNDER_REVIEW
+                && stage != ApplicationStage.INTERVIEW) {
+            throw new IllegalStateException(
+                    "An offer can only be made after review or interview."
+            );
+        }
+
+        if (changedAt == null) {
+            throw new IllegalArgumentException("Stage change time is required.");
+        }
+
+        appendStageRecord(
+                ApplicationStage.OFFER,
+                changedAt,
+                changedByUserId
+        );
+
+        this.stage = ApplicationStage.OFFER;
+    }
 
     /**
      * Updates the application stage.
@@ -92,6 +139,13 @@ public class Application {
     public void updateStage(
             ApplicationStage nextStage,
             LocalDateTime changedAt) {
+        updateStage(nextStage, changedAt, null);
+    }
+
+    public void updateStage(
+            ApplicationStage nextStage,
+            LocalDateTime changedAt,
+            Long changedByUserId) {
 
         if (nextStage == null) {
             throw new IllegalArgumentException(
@@ -134,11 +188,60 @@ public class Application {
                             + stage + " -> " + nextStage);
         }
 
+        appendStageRecord(
+                nextStage,
+                changedAt,
+                changedByUserId
+        );
+
         this.stage = nextStage;
         this.stageUpdatedAt = changedAt;
     }
 
+    public void startReview() {
+        startReview(LocalDateTime.now(), null);
+    }
 
+    public void startReview(
+            LocalDateTime changedAt,
+            Long changedByUserId) {
+
+        if (stage != ApplicationStage.SUBMITTED) {
+            throw new IllegalStateException(
+                    "Only a submitted application can enter review."
+            );
+        }
+
+        if (changedAt == null) {
+            throw new IllegalArgumentException("Stage change time is required.");
+        }
+
+        appendStageRecord(
+                ApplicationStage.UNDER_REVIEW,
+                changedAt,
+                changedByUserId
+        );
+
+        this.stage = ApplicationStage.UNDER_REVIEW;
+    }
+
+    public List<StageRecord> getStageHistory() {
+        return List.copyOf(stageHistory);
+    }
+
+    private void appendStageRecord(
+            ApplicationStage recordedStage,
+            LocalDateTime changedAt,
+            Long changedByUserId) {
+
+        stageHistory.add(
+                new StageRecord(
+                        recordedStage,
+                        changedAt,
+                        changedByUserId
+                )
+        );
+    }
 
     public ApplicationSummary getDetails() {
         return ApplicationSummary.from(this);

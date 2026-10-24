@@ -166,6 +166,17 @@ public class ApplicationService {
         return applications.saveAndFlush(application).getDetails();
     }
 
+    public ApplicationSummary extendJobOffer(
+            Long applicationId,
+            Long recruiterId) {
+
+        return updateStage(
+                applicationId,
+                recruiterId,
+                ApplicationStage.OFFER
+        );
+    }
+
     /**
      * Update Application Stage.
      * Only active recruiters from the same company

@@ -137,6 +137,46 @@ public class ApplicationService {
 
         return application.getDetails();
     }
+
+    public ApplicationSummary withdrawApplication(
+            Long applicationId,
+            Long applicantId) {
+
+        if (applicationId == null || applicantId == null) {
+            throw new ValidationException(
+                    "Application ID and Applicant ID are required."
+            );
+        }
+
+        Application application =
+                findOwnedApplication(applicationId, applicantId);
+
+        Long changedByUserId =
+                application.getApplicant().getAccount().getId();
+
+        try {
+            application.withdraw(
+                    LocalDateTime.now(clock),
+                    changedByUserId
+            );
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new ValidationException(e.getMessage());
+        }
+
+        return applications.saveAndFlush(application).getDetails();
+    }
+
+    public ApplicationSummary extendJobOffer(
+            Long applicationId,
+            Long recruiterId) {
+
+        return updateStage(
+                applicationId,
+                recruiterId,
+                ApplicationStage.OFFER
+        );
+    }
+
     /**
      * Update Application Stage.
      * Only active recruiters from the same company
@@ -199,36 +239,6 @@ public class ApplicationService {
         }
 
         // Step 7: Save the updated application.
-        return applications.saveAndFlush(application).getDetails();
-    }
-
-    public ApplicationSummary respondToOffer(
-            Long applicationId,
-            Long applicantId,
-            ApplicationStage decision) {
-
-        // Only ACCEPTED or DECLINED is allowed.
-        if (decision != ApplicationStage.ACCEPTED
-                && decision != ApplicationStage.DECLINED) {
-            throw new ValidationException(
-                    "Offer response must be ACCEPTED or DECLINED.");
-        }
-
-        // Verify applicant identity and application ownership.
-        Application application =
-                findOwnedApplication(applicationId, applicantId);
-
-        // Update the application stage.
-        try {
-            application.updateStage(
-                    decision,
-                    LocalDateTime.now(clock)
-            );
-        } catch (IllegalArgumentException | IllegalStateException e) {
-            throw new ValidationException(e.getMessage());
-        }
-
-        // Persist the updated application.
         return applications.saveAndFlush(application).getDetails();
     }
 

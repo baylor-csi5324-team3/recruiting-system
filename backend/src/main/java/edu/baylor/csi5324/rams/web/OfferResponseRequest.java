@@ -1,4 +1,8 @@
 package edu.baylor.csi5324.rams.web;
 
-public record OfferResponseRequest(String decision) {
-}
+import edu.baylor.csi5324.rams.domain.ApplicationStage;
+import jakarta.validation.constraints.NotNull;
+
+public record OfferResponseRequest(
+        @NotNull ApplicationStage decision
+) {}

@@ -1,0 +1,3 @@
+import { createFileRoute } from '@tanstack/react-router';
+import { ProfilePage } from '@/features/recruiting/applications';
+export const Route = createFileRoute('/profile')({ head: () => ({ meta: [{ title: 'My Profile | Verdant Recruiting' }, { name: 'description', content: 'Maintain your applicant profile and resume materials in Verdant.' }, { property: 'og:title', content: 'My Profile | Verdant Recruiting' }, { property: 'og:description', content: 'Share your experience and prepare for your next opportunity.' }, { property: 'og:type', content: 'website' }, { name: 'twitter:card', content: 'summary_large_image' }] }), component: ProfilePage });

@@ -73,5 +73,18 @@ public class ApplicationController {
         );
     }
 
+    @PostMapping("/{applicationId}/offer-response")
+    public ApplicationSummary respondToOffer(
+            @PathVariable Long applicationId,
+            @RequestHeader(APPLICANT_HEADER) Long applicantId,
+            @Valid @RequestBody OfferResponseRequest request) {
+
+        return applicationService.respondToOffer(
+                applicationId,
+                applicantId,
+                request.decision()
+        );
+    }
+
 
 }

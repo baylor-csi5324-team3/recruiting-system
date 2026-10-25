@@ -28,6 +28,7 @@ class RegistrationIntegrationTest {
     @Autowired RegistrationService service;
     @Autowired UserAccountRepository accounts;
     @Autowired CompanyRepository companies;
+    @Autowired ApplicantRepository applicants;
     @MockitoSpyBean RecruiterRepository recruiters;
     @Autowired PasswordEncoder encoder;
     @Autowired MockMvc mvc;
@@ -36,6 +37,7 @@ class RegistrationIntegrationTest {
     @BeforeEach
     void clear() {
         recruiters.deleteAll();
+        applicants.deleteAll();
         accounts.deleteAll();
         companies.deleteAll();
     }
@@ -56,6 +58,16 @@ class RegistrationIntegrationTest {
         assertFalse(encoder.matches("wrong", saved.getPasswordHash()));
         assertEquals(0, companies.count());
         assertEquals(0, recruiters.count());
+        assertEquals(1, applicants.count());
+        assertEquals("person", applicants.findAll().get(0).getName());
+        assertEquals(saved.getId(), applicants.findAll().get(0).getAccount().getId());
+    }
+
+    @Test
+    void applicantNameFromRequestIsStoredOnTheProfile() {
+        UserAccount account = service.register(new RegisterAccountRequest("named@example.com", SECRET, Role.APPLICANT, null, null, " Named Person "));
+        assertEquals("Named Person", applicants.findAll().get(0).getName());
+        assertEquals(account.getId(), applicants.findAll().get(0).getAccount().getId());
     }
 
     @Test

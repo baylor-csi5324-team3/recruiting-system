@@ -1,11 +1,13 @@
 package edu.baylor.csi5324.rams.service;
 
 import edu.baylor.csi5324.rams.domain.AccountStatus;
+import edu.baylor.csi5324.rams.domain.Applicant;
 import edu.baylor.csi5324.rams.domain.Company;
 import edu.baylor.csi5324.rams.domain.Recruiter;
 import edu.baylor.csi5324.rams.domain.RegisterAccountRequest;
 import edu.baylor.csi5324.rams.domain.Role;
 import edu.baylor.csi5324.rams.domain.UserAccount;
+import edu.baylor.csi5324.rams.repository.ApplicantRepository;
 import edu.baylor.csi5324.rams.repository.CompanyRepository;
 import edu.baylor.csi5324.rams.repository.RecruiterRepository;
 import edu.baylor.csi5324.rams.repository.UserAccountRepository;
@@ -17,15 +19,17 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class RegistrationService {
     private final UserAccountRepository accounts;
+    private final ApplicantRepository applicants;
     private final RecruiterRepository recruiters;
     private final CompanyRepository companies;
     private final PasswordEncoder passwordEncoder;
     private final RegistrationValidator validator;
 
-    public RegistrationService(UserAccountRepository accounts, RecruiterRepository recruiters,
-                               CompanyRepository companies, PasswordEncoder passwordEncoder,
-                               RegistrationValidator validator) {
+    public RegistrationService(UserAccountRepository accounts, ApplicantRepository applicants,
+                               RecruiterRepository recruiters, CompanyRepository companies,
+                               PasswordEncoder passwordEncoder, RegistrationValidator validator) {
         this.accounts = accounts;
+        this.applicants = applicants;
         this.recruiters = recruiters;
         this.companies = companies;
         this.passwordEncoder = passwordEncoder;
@@ -48,6 +52,12 @@ public class RegistrationService {
                 new UserAccount(request.email(), hash, request.role(), AccountStatus.ACTIVE));
         if (request.role() == Role.RECRUITER) {
             recruiters.saveAndFlush(new Recruiter(request.recruiterName(), account, company));
+        }
+        if (request.role() == Role.APPLICANT) {
+            // The applicant profile exists from the first day; Update Applicant Profile (4.2.1.4) edits it later.
+            String name = request.applicantName() != null ? request.applicantName()
+                    : request.email().substring(0, request.email().indexOf('@'));
+            applicants.saveAndFlush(new Applicant(name, account));
         }
         return account;
     }

@@ -1,6 +1,7 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import { initialJobs, initialApplications, initialInterviews, initialAccounts, type Role, type Stage, type Job, type Application, type Interview } from './data';
+import { submitApplication } from '@/lib/api';
 
 function useRecruitingState() {
   const [role, setRole] = useState<Role>('Applicant');
@@ -13,14 +14,44 @@ function useRecruitingState() {
   const [audit, setAudit] = useState<string[]>([]);
   const record = (message: string) => setAudit(prev => [`${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · ${role === 'Applicant' ? profile.name : role === 'Recruiter' ? 'Taylor Brooks' : 'Robin Parker'} · ${message}`, ...prev]);
   const toggleSave = (id: number) => { if (role !== 'Applicant') { toast.error('Sign in as an applicant to save jobs.'); return; } setSaved(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]); };
-  const submit = (job: Job, resume: string) => {
-    if (role !== 'Applicant' || job.status !== 'Open' || new Date(job.closes + 'T23:59:59') < new Date()) { toast.error('This job cannot accept an application.'); return false; }
-    if (applications.some(a => a.name === profile.name && a.jobId === job.id)) { toast.error('You have already applied for this job.'); return false; }
-    if (!profile.name || !profile.email || !resume) { toast.error('Complete your profile and select a resume.'); return false; }
-    const date = new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-    setApplications(prev => [...prev, { id: Date.now(), jobId: job.id, name: profile.name, email: profile.email, stage: 'Submitted', date, resume, history: [{ stage: 'Submitted', date, actor: profile.name }] }]);
-    record(`Submitted an application for ${job.title}`); toast.success('Application submitted successfully.'); return true;
+
+  const submit = async (
+      job: Job,
+      resumeFile: File | null,
+      coverLetter: string
+  ): Promise<boolean> => {
+    if (role !== 'Applicant' || job.status !== 'Open') {
+      toast.error('This job cannot accept an application.');
+      return false;
+    }
+
+    if (!resumeFile) {
+      toast.error('Please select a resume.');
+      return false;
+    }
+
+    try {
+      // Demo applicant ID.
+      // Confirm it using GET /api/applicants.
+      const applicantId = 1;
+
+      await submitApplication(
+          applicantId,
+          job.id,
+          resumeFile,
+          coverLetter
+      );
+
+      record(`Submitted an application for ${job.title}`);
+      toast.success('Application submitted successfully.');
+      return true;
+    } catch (error) {
+      console.error(error);
+      toast.error('Failed to submit application.');
+      return false;
+    }
   };
+
   const updateStage = (app: Application, stage: Stage) => {
     const job = jobs.find(j => j.id === app.jobId);
     const owner = role === 'Applicant' && app.name === profile.name;

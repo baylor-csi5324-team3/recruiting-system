@@ -17,12 +17,19 @@ public record RegisterAccountRequest(
         @NotBlank(message = "Provide a password.") String password,
         @NotNull(message = "Select APPLICANT or RECRUITER.") Role role,
         @Size(max = 150, message = "Company name must not exceed 150 UTF-16 units.") String companyName,
-        String recruiterName) {
+        String recruiterName,
+        @Size(max = 100, message = "Applicant name must not exceed 100 characters.") String applicantName) {
+
+    /** Registration without an applicant name (the name then defaults to the email's local part). */
+    public RegisterAccountRequest(String email, String password, Role role, String companyName, String recruiterName) {
+        this(email, password, role, companyName, recruiterName, null);
+    }
 
     public RegisterAccountRequest {
         email = email == null ? null : email.trim().toLowerCase(Locale.ROOT);
         companyName = companyName == null ? null : companyName.trim();
         recruiterName = recruiterName == null ? null : recruiterName.trim();
+        applicantName = applicantName == null || applicantName.isBlank() ? null : applicantName.trim();
         // Passwords are deliberately not trimmed or otherwise normalized.
     }
 

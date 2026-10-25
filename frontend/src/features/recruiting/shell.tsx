@@ -80,6 +80,9 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
           recruiterName: authRole === 'Recruiter'
               ? fullName.trim()
               : null,
+          applicantName: authRole === 'Applicant'
+              ? fullName.trim()
+              : null,
         }),
       });
 

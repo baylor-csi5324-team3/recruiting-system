@@ -17,7 +17,7 @@ class RegisterAccountPayloadTest {
     void readsRegistrationInputAndDoesNotSerializePassword() {
         RegisterAccountRequest request = mapper.readValue("""
                 {"email":" Person@Example.com ","password":"private phrase","role":"RECRUITER",
-                 "companyName":"Baylor Tech","recruiterName":"Rhea"}
+                 "companyName":"Baylor Tech","fullName":"Rhea"}
                 """, RegisterAccountRequest.class);
         assertEquals("person@example.com", request.email());
         assertEquals("private phrase", request.password());

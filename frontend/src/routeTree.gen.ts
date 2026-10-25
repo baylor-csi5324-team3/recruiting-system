@@ -13,6 +13,7 @@ import { Route as IndexRouteImport } from './routes/index'
 import { Route as AccountsRouteImport } from './routes/accounts'
 import { Route as ApplicationsRouteImport } from './routes/applications'
 import { Route as CandidatesRouteImport } from './routes/candidates'
+import { Route as InterviewsRouteImport } from './routes/interviews'
 import { Route as PostingsRouteImport } from './routes/postings'
 import { Route as ProfileRouteImport } from './routes/profile'
 import { Route as SavedRouteImport } from './routes/saved'
@@ -37,6 +38,11 @@ const CandidatesRoute = CandidatesRouteImport.update({
   path: '/candidates',
   getParentRoute: () => rootRouteImport,
 } as any)
+const InterviewsRoute = InterviewsRouteImport.update({
+  id: '/interviews',
+  path: '/interviews',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const PostingsRoute = PostingsRouteImport.update({
   id: '/postings',
   path: '/postings',
@@ -58,6 +64,7 @@ export interface FileRoutesByFullPath {
   '/accounts': typeof AccountsRoute
   '/applications': typeof ApplicationsRoute
   '/candidates': typeof CandidatesRoute
+  '/interviews': typeof InterviewsRoute
   '/postings': typeof PostingsRoute
   '/profile': typeof ProfileRoute
   '/saved': typeof SavedRoute
@@ -67,6 +74,7 @@ export interface FileRoutesByTo {
   '/accounts': typeof AccountsRoute
   '/applications': typeof ApplicationsRoute
   '/candidates': typeof CandidatesRoute
+  '/interviews': typeof InterviewsRoute
   '/postings': typeof PostingsRoute
   '/profile': typeof ProfileRoute
   '/saved': typeof SavedRoute
@@ -77,6 +85,7 @@ export interface FileRoutesById {
   '/accounts': typeof AccountsRoute
   '/applications': typeof ApplicationsRoute
   '/candidates': typeof CandidatesRoute
+  '/interviews': typeof InterviewsRoute
   '/postings': typeof PostingsRoute
   '/profile': typeof ProfileRoute
   '/saved': typeof SavedRoute
@@ -88,6 +97,7 @@ export interface FileRouteTypes {
     | '/accounts'
     | '/applications'
     | '/candidates'
+    | '/interviews'
     | '/postings'
     | '/profile'
     | '/saved'
@@ -97,6 +107,7 @@ export interface FileRouteTypes {
     | '/accounts'
     | '/applications'
     | '/candidates'
+    | '/interviews'
     | '/postings'
     | '/profile'
     | '/saved'
@@ -106,6 +117,7 @@ export interface FileRouteTypes {
     | '/accounts'
     | '/applications'
     | '/candidates'
+    | '/interviews'
     | '/postings'
     | '/profile'
     | '/saved'
@@ -116,6 +128,7 @@ export interface RootRouteChildren {
   AccountsRoute: typeof AccountsRoute
   ApplicationsRoute: typeof ApplicationsRoute
   CandidatesRoute: typeof CandidatesRoute
+  InterviewsRoute: typeof InterviewsRoute
   PostingsRoute: typeof PostingsRoute
   ProfileRoute: typeof ProfileRoute
   SavedRoute: typeof SavedRoute
@@ -151,6 +164,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof CandidatesRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/interviews': {
+      id: '/interviews'
+      path: '/interviews'
+      fullPath: '/interviews'
+      preLoaderRoute: typeof InterviewsRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/postings': {
       id: '/postings'
       path: '/postings'
@@ -180,6 +200,7 @@ const rootRouteChildren: RootRouteChildren = {
   AccountsRoute: AccountsRoute,
   ApplicationsRoute: ApplicationsRoute,
   CandidatesRoute: CandidatesRoute,
+  InterviewsRoute: InterviewsRoute,
   PostingsRoute: PostingsRoute,
   ProfileRoute: ProfileRoute,
   SavedRoute: SavedRoute,

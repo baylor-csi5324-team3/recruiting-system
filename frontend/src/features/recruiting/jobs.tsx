@@ -63,6 +63,11 @@ export function ExploreJobs({ savedOnly = false }: { savedOnly?: boolean }) {
   const [loadingJobs, setLoadingJobs] = useState(true);
   const [jobsError, setJobsError] = useState('');
 
+  const [keyword, setKeyword] = useState('');
+  const [search, setSearch] = useState('');
+  const [location, setLocation] = useState('');
+  const [type, setType] = useState('');
+
   useEffect(() => {
     if (savedOnly) {
       setLoadingJobs(false);
@@ -76,9 +81,22 @@ export function ExploreJobs({ savedOnly = false }: { savedOnly?: boolean }) {
       setJobsError('');
 
       try {
-        const response = await fetch('/api/jobs/search/results', {
-          signal: controller.signal,
-        });
+        // Search Available Jobs: the filters are applied by the back end.
+        const typeParam: Record<string, string> = {
+          'Full-time': 'FULL_TIME',
+          'Part-time': 'PART_TIME',
+          Internship: 'INTERNSHIP',
+          Contract: 'CONTRACT',
+        };
+        const params = new URLSearchParams();
+        if (search) params.set('keyword', search);
+        if (location) params.set('location', location);
+        if (type) params.set('employmentType', typeParam[type] ?? type);
+        const query = params.toString();
+        const response = await fetch(
+            `/api/jobs/search/results${query ? `?${query}` : ''}`,
+            { signal: controller.signal }
+        );
 
         if (!response.ok) {
           throw new Error(`Failed to load jobs (HTTP ${response.status})`);
@@ -105,14 +123,10 @@ export function ExploreJobs({ savedOnly = false }: { savedOnly?: boolean }) {
     void loadJobs();
 
     return () => controller.abort();
-  }, [savedOnly]);
+  }, [savedOnly, search, location, type]);
 
   const displayedJobs = savedOnly ? jobs : backendJobs;
 
-  const [keyword, setKeyword] = useState('');
-  const [search, setSearch] = useState('');
-  const [location, setLocation] = useState('');
-  const [type, setType] = useState('');
   const [category, setCategory] = useState('All opportunities');
   const [filterOpen, setFilterOpen] = useState(false);
   const [mode, setMode] = useState('');
@@ -126,7 +140,7 @@ export function ExploreJobs({ savedOnly = false }: { savedOnly?: boolean }) {
     {savedOnly ? <div className="mb-7"><p className="mb-2 text-xs text-primary">YOUR SHORTLIST</p><h1 className="page-heading">Saved opportunities</h1><p className="mt-2 text-sm text-muted-foreground">The roles you’re keeping an eye on, all in one place.</p></div> : <><div className="explore-intro"><div><p className="text-[12px] text-muted-foreground">{role === 'Guest' ? 'A fresh start begins here' : 'A little ambition goes a long way'}</p><h2 className="mt-1 text-[18px] font-semibold">{role === 'Guest' ? 'Welcome to Verdant.' : 'Make your next move, Alex.'}</h2></div><span className="hidden items-center gap-2 text-[10px] text-muted-foreground sm:flex"><span className="size-1.5 rounded-full bg-primary" /> Open to possibilities</span></div><section className="opportunity-banner"><img src={hero} alt="Wind turbines on green rolling hills" width={1920} height={768} /><div className="banner-copy"><span className="banner-eyebrow"><Sprout className="size-3.5" /> THE OPPORTUNITY EDIT</span><h1>Good work.<br />Great possibilities.</h1><p>Find your place in a team that moves you forward.</p></div><span className="banner-index"><span className="banner-index-number">
       {String(displayedJobs.filter(j => j.status === 'Open').length).padStart(2, '0')}
     </span><span>open roles<br />a fresh start awaits</span><ArrowUpRight className="size-5" /></span></section></>}
-    <form onSubmit={e => { e.preventDefault(); setSearch(keyword); }} className="job-search"><div className="flex flex-1 items-center gap-2.5 px-3"><Search className="size-4 shrink-0 text-muted-foreground" /><input aria-label="Job title or company" placeholder="Job title or company" value={keyword} onChange={e => setKeyword(e.target.value)} className="h-9 w-full min-w-0 bg-transparent text-xs" /></div><div className="flex items-center gap-2 border-border px-3 sm:w-[190px] sm:border-l"><MapPin className="size-4 shrink-0 text-muted-foreground" /><select aria-label="Location" value={location} onChange={e => setLocation(e.target.value)} className="h-9 w-full bg-transparent text-xs"><option value="">Any location</option>{['San Francisco', 'New York', 'Waco', 'Austin', 'Boston'].map(l => <option key={l}>{l}</option>)}</select></div><div className="border-border px-3 sm:w-[150px] sm:border-l"><select aria-label="Employment type" value={type} onChange={e => setType(e.target.value)} className="h-9 w-full bg-transparent text-xs"><option value="">Job type</option><option>Full-time</option><option>Internship</option><option>Contract</option></select></div><Button type="submit" className="h-10 gap-3 text-xs">Search jobs <ArrowRight className="size-3.5" /></Button></form>
+    <form onSubmit={e => { e.preventDefault(); setSearch(keyword); }} className="job-search"><div className="flex flex-1 items-center gap-2.5 px-3"><Search className="size-4 shrink-0 text-muted-foreground" /><input aria-label="Job title or company" placeholder="Job title or company" value={keyword} onChange={e => setKeyword(e.target.value)} className="h-9 w-full min-w-0 bg-transparent text-xs" /></div><div className="flex items-center gap-2 border-border px-3 sm:w-[190px] sm:border-l"><MapPin className="size-4 shrink-0 text-muted-foreground" /><select aria-label="Location" value={location} onChange={e => setLocation(e.target.value)} className="h-9 w-full bg-transparent text-xs"><option value="">Any location</option>{['Austin, TX', 'Dallas, TX', 'Waco, TX'].map(l => <option key={l}>{l}</option>)}</select></div><div className="border-border px-3 sm:w-[150px] sm:border-l"><select aria-label="Employment type" value={type} onChange={e => setType(e.target.value)} className="h-9 w-full bg-transparent text-xs"><option value="">Job type</option><option>Full-time</option><option>Internship</option><option>Contract</option></select></div><Button type="submit" className="h-10 gap-3 text-xs">Search jobs <ArrowRight className="size-3.5" /></Button></form>
     <div className="category-bar flex flex-wrap items-center justify-between gap-3 border-b pb-4"><div className="flex max-w-full flex-wrap gap-1.5">{categories.map(c => <Button variant={category === c ? 'secondary' : 'ghost'} size="sm" key={c} onClick={() => setCategory(c)} className="h-8 px-3 text-[11px]">{c}{c === 'All opportunities' && <span className="ml-1 rounded bg-card/60 px-1.5 py-0.5 text-[9px]">
       {displayedJobs.filter(j =>
           savedOnly ? saved.includes(j.id) : j.status === 'Open'

@@ -67,11 +67,6 @@ export function ApplicationsPage({ candidates = false }: { candidates?: boolean 
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState('');
 
-  const [offerDecision, setOfferDecision] =
-      useState<'ACCEPTED' | 'DECLINED' | null>(null);
-
-  const [offerSubmitting, setOfferSubmitting] = useState(false);
-
   const [loading, setLoading] = useState(false);
   const [loadError, setLoadError] = useState('');
 
@@ -157,62 +152,6 @@ export function ApplicationsPage({ candidates = false }: { candidates?: boolean 
 
     return () => controller.abort();
   }, [selectedId, candidates, role, applicantId]);
-  const submitOfferDecision = async () => {
-    if (selectedId === null || offerDecision === null || offerSubmitting) {
-      return;
-    }
-
-    setOfferSubmitting(true);
-
-    try {
-      const response = await fetch(
-          `/api/applications/${selectedId}/offer-response`,
-          {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'X-Applicant-Id': String(applicantId),
-            },
-            body: JSON.stringify({
-              decision: offerDecision,
-            }),
-          }
-      );
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}`);
-      }
-
-      const updatedDetail: BackendApplicationDetail =
-          await response.json();
-
-      // Update the application in the list.
-      setBackendApplications(previous =>
-          previous.map(app =>
-              app.applicationId === selectedId
-                  ? { ...app, stage: updatedDetail.stage }
-                  : app
-          )
-      );
-
-      // Update the timeline in the open dialog.
-      setBackendDetail(updatedDetail);
-
-      toast.success(
-          offerDecision === 'ACCEPTED'
-              ? 'Offer accepted successfully.'
-              : 'Offer declined successfully.'
-      );
-
-      setOfferDecision(null);
-    } catch (error) {
-      console.error(error);
-      toast.error('Failed to respond to offer. Please try again.');
-    } finally {
-      setOfferSubmitting(false);
-    }
-  };
-
   const [tab, setTab] = useState('All');
   // const [selectedId, setSelectedId] = useState<number | null>(null);
   const [confirm, setConfirm] = useState<Stage | null>(null);
@@ -377,9 +316,8 @@ export function ApplicationsPage({ candidates = false }: { candidates?: boolean 
           <Dialog
               open={selectedId !== null}
               onOpenChange={open => {
-                if (!open && !offerSubmitting) {
+                if (!open) {
                   setSelectedId(null);
-                  setOfferDecision(null);
                 }
               }}
           >
@@ -452,55 +390,6 @@ export function ApplicationsPage({ candidates = false }: { candidates?: boolean 
                             </ol>
                         )}
                       </section>
-
-                      {app.stage === 'OFFER' && (
-                          <section className="border-t pt-5">
-                            {offerDecision === null ? (
-                                <div className="flex flex-wrap gap-3">
-                                  <Button
-                                      onClick={() => setOfferDecision('ACCEPTED')}
-                                  >
-                                    <Check />
-                                    Accept offer
-                                  </Button>
-
-                                  <Button
-                                      variant="outline"
-                                      onClick={() => setOfferDecision('DECLINED')}
-                                  >
-                                    Decline offer
-                                  </Button>
-                                </div>
-                            ) : (
-                                <>
-                                  <p className="text-sm">
-                                    Are you sure you want to{' '}
-                                    {offerDecision === 'ACCEPTED' ? 'accept' : 'decline'} this offer?
-                                  </p>
-
-                                  <div className="mt-4 flex justify-end gap-2">
-                                    <Button
-                                        variant="outline"
-                                        disabled={offerSubmitting}
-                                        onClick={() => setOfferDecision(null)}
-                                    >
-                                      Cancel
-                                    </Button>
-
-                                    <Button
-                                        variant={offerDecision === 'DECLINED' ? 'destructive' : 'default'}
-                                        disabled={offerSubmitting}
-                                        onClick={() => void submitOfferDecision()}
-                                    >
-                                      {offerSubmitting
-                                          ? 'Submitting...'
-                                          : `Confirm ${offerDecision === 'ACCEPTED' ? 'accept' : 'decline'}`}
-                                    </Button>
-                                  </div>
-                                </>
-                            )}
-                          </section>
-                      )}
 
                     </>
                 );

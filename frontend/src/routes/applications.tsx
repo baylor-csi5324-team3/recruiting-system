@@ -1,0 +1,3 @@
+import { createFileRoute } from '@tanstack/react-router';
+import { ApplicationsPage } from '@/features/recruiting/applications';
+export const Route = createFileRoute('/applications')({ head: () => ({ meta: [{ title: 'My Applications | Verdant Recruiting' }, { name: 'description', content: 'Track your applications, review recruiting progress, and respond to offers.' }, { property: 'og:title', content: 'My Applications | Verdant Recruiting' }, { property: 'og:description', content: 'Follow every step of your recruiting journey.' }, { property: 'og:type', content: 'website' }, { name: 'twitter:card', content: 'summary_large_image' }] }), component: ApplicationsPage });

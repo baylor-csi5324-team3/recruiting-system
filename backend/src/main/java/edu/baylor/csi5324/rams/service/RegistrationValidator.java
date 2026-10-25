@@ -39,16 +39,16 @@ public class RegistrationValidator {
         if (request.password().getBytes(StandardCharsets.UTF_8).length > 72) {
             throw new ValidationException("Password must not exceed 72 UTF-8 bytes.");
         }
-        if (request.role() == Role.RECRUITER) {
-            if (request.companyName() == null || request.companyName().isBlank()) {
-                throw new ValidationException("Provide a company name for recruiter registration.");
-            }
-            if (request.recruiterName() == null || request.recruiterName().isBlank()) {
-                throw new ValidationException("Provide a recruiter name for recruiter registration.");
-            }
-            if (request.recruiterName().codePointCount(0, request.recruiterName().length()) > 100) {
-                throw new ValidationException("Recruiter name must not exceed 100 Unicode characters.");
-            }
+        // The full name is stored with the applicant or recruiter; it is not required to be unique.
+        if (request.fullName() == null || request.fullName().isBlank()) {
+            throw new ValidationException("Provide your full name.");
+        }
+        if (request.fullName().codePointCount(0, request.fullName().length()) > 100) {
+            throw new ValidationException("Full name must not exceed 100 Unicode characters.");
+        }
+        if (request.role() == Role.RECRUITER
+                && (request.companyName() == null || request.companyName().isBlank())) {
+            throw new ValidationException("Provide a company name for recruiter registration.");
         }
     }
 }

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState, type FormEvent } from 'react';
-import { ArrowUpRight, ArrowRight, Bookmark, Search, MapPin, SlidersHorizontal, Check, BriefcaseBusiness, Clock, Upload, Sprout } from 'lucide-react';
+import { useMemo, useState, type FormEvent } from 'react';
+import { ArrowUpRight, ArrowRight, Bookmark, Search, MapPin, Check, Upload, Sprout, Clock, BriefcaseBusiness } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import hero from '@/assets/opportunities.jpg';
@@ -7,522 +7,83 @@ import { useRecruiting } from './store';
 import { formatDate, type Job } from './data';
 import { toast } from 'sonner';
 
-
-type BackendJob = {
-  id: number;
-  title: string;
-  companyName: string;
-  location: string;
-  employmentType: string;
-  closingDate: string;
-};
-
-function convertBackendJob(job: BackendJob): Job {
-  const typeMap: Record<string, string> = {
-    FULL_TIME: 'Full-time',
-    PART_TIME: 'Part-time',
-    INTERNSHIP: 'Internship',
-    CONTRACT: 'Contract',
-  };
-
-  return {
-    id: job.id,
-    title: job.title,
-    company: job.companyName,
-    logo: 'BT',
-    color: 'green',
-    location: job.location,
-    type: typeMap[job.employmentType] ?? job.employmentType,
-    mode: 'Not specified',
-    salary: 'Not disclosed',
-    category: 'Engineering',
-    level: 'Not specified',
-    posted: 'Date not available',
-    closes: job.closingDate,
-    status: 'Open',
-    description: 'Please contact the recruiter for additional job details.',
-  };
+export function CompanyLogo({job}:{job:Job}) {
+  return <span className={`company-logo ${job.color}`} aria-label={job.company}>{job.logo}</span>;
 }
-
-
-export function CompanyLogo({ job }: { job: Job }) { return <span className={`company-logo ${job.color}`} aria-label={job.company}>{job.logo === 'BU' ? <span className="text-base">BU</span> : job.logo}</span>; }
-export function JobCard({ job, onSelect }: { job: Job; onSelect: (job: Job) => void }) {
-  const { saved, toggleSave } = useRecruiting();
-  return <article className="job-card"><div className="flex items-center justify-between"><div className="flex items-center gap-3"><CompanyLogo job={job} /><div><p className="text-xs font-semibold">{job.company}</p><p className="mt-1 text-[10px] text-muted-foreground">{job.posted}</p></div></div><Button variant="ghost" size="icon" aria-label={`${saved.includes(job.id) ? 'Unsave' : 'Save'} ${job.title}`} title={saved.includes(job.id) ? 'Remove from saved jobs' : 'Save job'} onClick={() => toggleSave(job.id)} className={saved.includes(job.id) ? 'text-primary' : 'text-muted-foreground'}><Bookmark fill={saved.includes(job.id) ? 'currentColor' : 'none'} className="size-[17px]" /></Button></div>
-    <Button variant="link" onClick={() => onSelect(job)} className="job-title mt-5 h-auto justify-start whitespace-normal p-0 text-left text-[16px] font-semibold text-foreground no-underline hover:no-underline">{job.title}</Button><div className="mt-2.5 flex items-center gap-1.5 text-[11px] text-muted-foreground"><MapPin className="size-3" />{job.location}</div><div className="mt-4 flex flex-wrap gap-1.5"><span className="tag">{job.type}</span><span className="tag">{job.mode}</span><span className="tag">{job.level}</span></div><div className="job-card-footer mt-5 flex items-center justify-between gap-2 border-t pt-4"><div><p className="text-xs font-semibold">{job.salary}<span className="ml-1 text-[10px] font-normal text-muted-foreground">{job.salary.includes('hr') ? '' : '/ year'}</span></p><p className="mt-1 text-[9px] text-muted-foreground">Closes {formatDate(job.closes).replace(', 2026', '')}</p></div><Button variant="ghost" size="sm" onClick={() => onSelect(job)} className="h-8 gap-1.5 px-1 text-[11px] text-primary">View job <ArrowUpRight className="size-3.5" /></Button></div>
+export function JobCard({job,onSelect}:{job:Job;onSelect:(job:Job)=>void}) {
+  const {saved,toggleSave,role} = useRecruiting();
+  return <article className="job-card">
+    <div className="flex items-center justify-between">
+      <div className="flex items-center gap-3"><CompanyLogo job={job}/><div><p className="text-xs font-semibold">{job.company}</p><p className="mt-1 text-[10px] text-muted-foreground">{job.posted}</p></div></div>
+      {role === 'Applicant' && <Button variant="ghost" size="icon" aria-label="Save job" onClick={()=>{void toggleSave(job.id);}}><Bookmark className="size-[17px]" fill={saved.includes(job.id)?'currentColor':'none'}/></Button>}
+    </div>
+    <Button variant="link" onClick={()=>onSelect(job)} className="job-title mt-5 h-auto justify-start whitespace-normal p-0 text-left text-[16px] font-semibold text-foreground no-underline hover:no-underline">{job.title}</Button>
+    <div className="mt-2.5 flex items-center gap-1.5 text-[11px] text-muted-foreground"><MapPin className="size-3"/>{job.location}</div>
+    <div className="mt-4 flex flex-wrap gap-1.5"><span className="tag">{job.type}</span>{job.mode !== 'Not specified' && <span className="tag">{job.mode}</span>}</div>
+    <div className="job-card-footer mt-5 flex items-center justify-between gap-2 border-t pt-4"><div><p className="text-xs font-semibold">{job.salary}</p><p className="mt-1 text-[9px] text-muted-foreground">Closes {formatDate(job.closes)}</p></div><Button variant="ghost" size="sm" onClick={()=>onSelect(job)} className="h-8 gap-1.5 px-1 text-[11px] text-primary">View job <ArrowUpRight className="size-3.5"/></Button></div>
   </article>;
 }
 
-
-
-export function ExploreJobs({ savedOnly = false }: { savedOnly?: boolean }) {
-  const { jobs, saved, role } = useRecruiting();
-
-  const [backendJobs, setBackendJobs] = useState<Job[]>([]);
-  const [loadingJobs, setLoadingJobs] = useState(true);
-  const [jobsError, setJobsError] = useState('');
-
-  const [keyword, setKeyword] = useState('');
-  const [search, setSearch] = useState('');
-  const [location, setLocation] = useState('');
-  const [type, setType] = useState('');
-
-  useEffect(() => {
-    if (savedOnly) {
-      setLoadingJobs(false);
-      return;
-    }
-
-    const controller = new AbortController();
-
-    const loadJobs = async () => {
-      setLoadingJobs(true);
-      setJobsError('');
-
-      try {
-        // Search Available Jobs: the filters are applied by the back end.
-        const typeParam: Record<string, string> = {
-          'Full-time': 'FULL_TIME',
-          'Part-time': 'PART_TIME',
-          Internship: 'INTERNSHIP',
-          Contract: 'CONTRACT',
-        };
-        const params = new URLSearchParams();
-        if (search) params.set('keyword', search);
-        if (location) params.set('location', location);
-        if (type) params.set('employmentType', typeParam[type] ?? type);
-        const query = params.toString();
-        const response = await fetch(
-            `/api/jobs/search/results${query ? `?${query}` : ''}`,
-            { signal: controller.signal }
-        );
-
-        if (!response.ok) {
-          throw new Error(`Failed to load jobs (HTTP ${response.status})`);
-        }
-
-        const data: BackendJob[] = await response.json();
-
-        setBackendJobs(data.map(convertBackendJob));
-      } catch (error) {
-        if (controller.signal.aborted) return;
-
-        setJobsError(
-            error instanceof Error
-                ? error.message
-                : 'Unable to load jobs.'
-        );
-      } finally {
-        if (!controller.signal.aborted) {
-          setLoadingJobs(false);
-        }
-      }
-    };
-
-    void loadJobs();
-
-    return () => controller.abort();
-  }, [savedOnly, search, location, type]);
-
-  const displayedJobs = savedOnly ? jobs : backendJobs;
-
-  const [category, setCategory] = useState('All opportunities');
-  const [filterOpen, setFilterOpen] = useState(false);
-  const [mode, setMode] = useState('');
-  const [selected, setSelected] = useState<Job | null>(null);
-  const [sort, setSort] = useState('recent');
-  const categories = ['All opportunities', 'Design', 'Engineering', 'Marketing', 'Data & Analytics'];
-  const matches = useMemo(() => displayedJobs.filter(j => (savedOnly ? saved.includes(j.id) : j.status === 'Open') && (!search || `${j.title} ${j.company}`.toLowerCase().includes(search.toLowerCase())) && (!location || j.location.includes(location)) && (!type || j.type === type) && (!mode || j.mode === mode) && (category === 'All opportunities' || category === j.category)).sort((a, b) => sort === 'closing' ? a.closes.localeCompare(b.closes) : a.id - b.id),
-      [displayedJobs, saved, search, location, type, category, mode, savedOnly, sort]);
-  const reset = () => { setKeyword(''); setSearch(''); setLocation(''); setType(''); setMode(''); setCategory('All opportunities'); };
-  return <div className={`opportunities-layout ${savedOnly ? 'shortlist-layout' : 'explore-layout'}`}>
-    {savedOnly ? <div className="mb-7"><p className="mb-2 text-xs text-primary">YOUR SHORTLIST</p><h1 className="page-heading">Saved opportunities</h1><p className="mt-2 text-sm text-muted-foreground">The roles you’re keeping an eye on, all in one place.</p></div> : <><div className="explore-intro"><div><p className="text-[12px] text-muted-foreground">{role === 'Guest' ? 'A fresh start begins here' : 'A little ambition goes a long way'}</p><h2 className="mt-1 text-[18px] font-semibold">{role === 'Guest' ? 'Welcome to Verdant.' : 'Make your next move, Alex.'}</h2></div><span className="hidden items-center gap-2 text-[10px] text-muted-foreground sm:flex"><span className="size-1.5 rounded-full bg-primary" /> Open to possibilities</span></div><section className="opportunity-banner"><img src={hero} alt="Wind turbines on green rolling hills" width={1920} height={768} /><div className="banner-copy"><span className="banner-eyebrow"><Sprout className="size-3.5" /> THE OPPORTUNITY EDIT</span><h1>Good work.<br />Great possibilities.</h1><p>Find your place in a team that moves you forward.</p></div><span className="banner-index"><span className="banner-index-number">
-      {String(displayedJobs.filter(j => j.status === 'Open').length).padStart(2, '0')}
-    </span><span>open roles<br />a fresh start awaits</span><ArrowUpRight className="size-5" /></span></section></>}
-    <form onSubmit={e => { e.preventDefault(); setSearch(keyword); }} className="job-search"><div className="flex flex-1 items-center gap-2.5 px-3"><Search className="size-4 shrink-0 text-muted-foreground" /><input aria-label="Job title or company" placeholder="Job title or company" value={keyword} onChange={e => setKeyword(e.target.value)} className="h-9 w-full min-w-0 bg-transparent text-xs" /></div><div className="flex items-center gap-2 border-border px-3 sm:w-[190px] sm:border-l"><MapPin className="size-4 shrink-0 text-muted-foreground" /><select aria-label="Location" value={location} onChange={e => setLocation(e.target.value)} className="h-9 w-full bg-transparent text-xs"><option value="">Any location</option>{['Austin, TX', 'Dallas, TX', 'Waco, TX'].map(l => <option key={l}>{l}</option>)}</select></div><div className="border-border px-3 sm:w-[150px] sm:border-l"><select aria-label="Employment type" value={type} onChange={e => setType(e.target.value)} className="h-9 w-full bg-transparent text-xs"><option value="">Job type</option><option>Full-time</option><option>Internship</option><option>Contract</option></select></div><Button type="submit" className="h-10 gap-3 text-xs">Search jobs <ArrowRight className="size-3.5" /></Button></form>
-    <div className="category-bar flex flex-wrap items-center justify-between gap-3 border-b pb-4"><div className="flex max-w-full flex-wrap gap-1.5">{categories.map(c => <Button variant={category === c ? 'secondary' : 'ghost'} size="sm" key={c} onClick={() => setCategory(c)} className="h-8 px-3 text-[11px]">{c}{c === 'All opportunities' && <span className="ml-1 rounded bg-card/60 px-1.5 py-0.5 text-[9px]">
-      {displayedJobs.filter(j =>
-          savedOnly ? saved.includes(j.id) : j.status === 'Open'
-      ).length}
-    </span>}</Button>)}</div><Button variant="outline" size="sm" className="h-8 text-[11px]" onClick={() => setFilterOpen(!filterOpen)}><SlidersHorizontal className="size-3.5" />Filters{mode && <span className="size-1.5 rounded-full bg-primary" />}</Button></div>
-    {filterOpen && <div className="flex flex-wrap items-center gap-4 border-b py-4 text-xs"><span className="font-medium">Workplace</span>{['Remote', 'Hybrid', 'On-site'].map(m => <label key={m} className="flex items-center gap-1.5"><input type="radio" name="workplace" checked={mode === m} onChange={() => setMode(m)} />{m}</label>)}<Button variant="link" size="sm" onClick={reset}>Reset filters</Button></div>}
-    <div className="results-heading flex items-center justify-between py-5">
-      {!savedOnly && loadingJobs && (
-          <p className="py-3 text-sm text-muted-foreground">
-            Loading jobs from server...
-          </p>
-      )}
-
-      {!savedOnly && jobsError && (
-          <p className="py-3 text-sm text-red-600" role="alert">
-            {jobsError}
-          </p>
-      )}
-      <p className="text-[12px]"><span className="font-semibold">{matches.length} opportunities</span><span className="ml-1 text-muted-foreground">{savedOnly ? 'saved for later' : 'to explore'}</span></p><label className="flex items-center gap-1.5 text-[10px] text-muted-foreground">Sort by:<select aria-label="Sort jobs" value={sort} onChange={e => setSort(e.target.value)} className="bg-transparent font-medium text-foreground"><option value="recent">Most recent</option><option value="closing">Closing soon</option></select></label></div>
-    {!loadingJobs && !jobsError && (
-        <>
-          {matches.length ? (
-              <div className="job-grid">
-                {matches.map(job => (
-                    <JobCard
-                        job={job}
-                        key={job.id}
-                        onSelect={setSelected}
-                    />
-                ))}
-              </div>
-          ) : (
-              <div className="empty-state">
-                <Search className="mx-auto mb-4 size-7" />
-                <h3 className="text-base font-semibold text-foreground">
-                  {savedOnly && !saved.length
-                      ? 'Your shortlist is waiting'
-                      : 'No matching opportunities'}
-                </h3>
-                <p className="mt-2 text-sm">
-                  {savedOnly && !saved.length
-                      ? 'Save a job that catches your eye.'
-                      : 'Try a different keyword or broaden your filters.'}
-                </p>
-                <Button variant="outline" className="mt-5" onClick={reset}>
-                  Clear filters
-                </Button>
-              </div>
-          )}
-
-          {matches.length > 0 && (
-              <div className="mt-7 flex items-center justify-between text-[10px] text-muted-foreground">
-        <span>
-          Showing {matches.length} of {matches.length} opportunities
-        </span>
-                <div className="flex items-center gap-1">
-                  <Button
-                      size="icon"
-                      variant="outline"
-                      disabled
-                      aria-label="Previous page"
-                      className="size-7"
-                  >
-                    ←
-                  </Button>
-                  <span className="flex size-7 items-center justify-center rounded bg-primary text-primary-foreground">
-            1
-          </span>
-                  <Button
-                      size="icon"
-                      variant="outline"
-                      disabled
-                      aria-label="Next page"
-                      className="size-7"
-                  >
-                    →
-                  </Button>
-                </div>
-              </div>
-          )}
-        </>
-    )}
-
-    <JobDetails job={selected} onClose={() => setSelected(null)} />
+export function ExploreJobs({savedOnly=false}:{savedOnly?:boolean}) {
+  const {jobs,saved,role,loading,error,actor} = useRecruiting();
+  const [keyword,setKeyword]=useState('');
+  const [search,setSearch]=useState('');
+  const [location,setLocation]=useState('');
+  const [type,setType]=useState('');
+  const [sort,setSort]=useState('recent');
+  const [selected,setSelected]=useState<Job|null>(null);
+  const options = useMemo(()=>[...new Set(jobs.map(j=>j.location))].sort(),[jobs]);
+  const types = useMemo(()=>[...new Set(jobs.map(j=>j.type))].sort(),[jobs]);
+  const matched = useMemo(()=>jobs.filter(j=>
+    (savedOnly ? saved.includes(j.id) : j.status === 'Open') &&
+    (!search || `${j.title} ${j.company}`.toLowerCase().includes(search.toLowerCase())) &&
+    (!location || j.location===location) && (!type || j.type===type))
+    .sort((a,b)=>sort==='closing'?a.closes.localeCompare(b.closes):b.id-a.id),
+  [jobs,saved,savedOnly,search,location,type,sort]);
+  const openCount=jobs.filter(j=>j.status==='Open').length;
+  return <div className={`opportunities-layout ${savedOnly?'shortlist-layout':'explore-layout'}`}>
+    {savedOnly ? <div className="mb-7"><p className="mb-2 text-xs text-primary">YOUR SHORTLIST</p><h1 className="page-heading">Saved opportunities</h1><p className="mt-2 text-sm text-muted-foreground">Saved jobs are loaded from the server.</p></div>
+      : <><div className="explore-intro"><div><p className="text-[12px] text-muted-foreground">{role==='Guest'?'A fresh start begins here':'A little ambition goes a long way'}</p><h2 className="mt-1 text-[18px] font-semibold">{role==='Guest'?'Welcome to Verdant.':`Make your next move${actor?', '+actor.name.split(' ')[0]:''}.`}</h2></div></div>
+        <section className="opportunity-banner"><img src={hero} alt="Wind turbines on green hills" width={1920} height={768}/><div className="banner-copy"><span className="banner-eyebrow"><Sprout className="size-3.5"/> THE OPPORTUNITY EDIT</span><h1>Good work.<br/>Great possibilities.</h1><p>Find your place in a team that moves you forward.</p></div><span className="banner-index"><span className="banner-index-number">{String(openCount).padStart(2,'0')}</span><span>open roles</span></span></section></>}
+    <form onSubmit={e=>{e.preventDefault();setSearch(keyword);}} className="job-search"><div className="flex flex-1 items-center gap-2.5 px-3"><Search className="size-4 shrink-0 text-muted-foreground"/><input aria-label="Job title or company" placeholder="Job title or company" value={keyword} onChange={e=>setKeyword(e.target.value)} className="h-9 w-full min-w-0 bg-transparent text-xs"/></div>
+      <div className="border-border px-3 sm:w-[190px] sm:border-l"><select aria-label="Location" value={location} onChange={e=>setLocation(e.target.value)} className="h-9 w-full bg-transparent text-xs"><option value="">Any location</option>{options.map(x=><option key={x} value={x}>{x}</option>)}</select></div>
+      <div className="border-border px-3 sm:w-[150px] sm:border-l"><select aria-label="Employment type" value={type} onChange={e=>setType(e.target.value)} className="h-9 w-full bg-transparent text-xs"><option value="">Job type</option>{types.map(x=><option key={x}>{x}</option>)}</select></div>
+      <Button type="submit" className="h-10 gap-3 text-xs">Search jobs <ArrowRight className="size-3.5"/></Button>
+    </form>
+    <div className="results-heading flex items-center justify-between py-5"><p className="text-[12px]"><strong>{matched.length} opportunities</strong></p><label className="text-[10px] text-muted-foreground">Sort by: <select value={sort} onChange={e=>setSort(e.target.value)} className="bg-transparent"><option value="recent">Most recent</option><option value="closing">Closing soon</option></select></label></div>
+    {loading ? <p className="py-6 text-sm">Loading jobs from Spring Boot...</p> : error ? <p role="alert" className="text-destructive">{error}</p> : matched.length ? <div className="job-grid">{matched.map(j=><JobCard job={j} key={j.id} onSelect={setSelected}/>)}</div>
+       : <div className="empty-state"><Search className="mx-auto mb-4 size-7"/><h3>No matching opportunities</h3><Button variant="outline" onClick={()=>{setSearch('');setKeyword('');setLocation('');setType('');}}>Clear filters</Button></div>}
+    <JobDetails job={selected} onClose={()=>setSelected(null)}/>
   </div>;
 }
 
-
-
-
-/**
- * Demo account used by the existing My Applications page (applications.tsx).
- * Replace this with authenticated applicant identity when login is implemented.
- * Check GET /api/applicants to verify the ID in your demo database.
- */
-const DEMO_APPLICANT_ID = 1;
-const MAX_RESUME_BYTES = 5 * 1024 * 1024;
-
-type SubmittedApplication = {
-  applicationId: number;
-  jobPostingId: number;
-};
-
-type UploadedResume = {
-  id: number;
-  filename: string;
-};
-
-/** Surface actionable backend errors rather than hiding every failure. */
-async function getApiError(response: Response): Promise<string> {
-  const body = await response.text();
-  try {
-    const parsed: { message?: string; detail?: string; error?: string } = JSON.parse(body);
-    return parsed.message || parsed.detail || parsed.error || `HTTP ${response.status}`;
-  } catch {
-    return body && body.length < 200 ? body : `HTTP ${response.status}`;
-  }
-}
-
-function JobDetails({ job, onClose }: { job: Job | null; onClose: () => void }) {
-  const { profile, role, toggleSave, saved } = useRecruiting();
-  const [step, setStep] = useState(0);
-  const [resumeFile, setResumeFile] = useState<File | null>(null);
-  const [cover, setCover] = useState('');
-  const [submitting, setSubmitting] = useState(false);
-  const [checkingApplication, setCheckingApplication] = useState(false);
-  const [applicationCheckError, setApplicationCheckError] = useState('');
-  const [alreadyApplied, setAlreadyApplied] = useState(false);
-
-  // The server, not local mock applications, decides whether the applicant applied.
-  useEffect(() => {
-    if (!job || role !== 'Applicant') {
-      setAlreadyApplied(false);
-      setApplicationCheckError('');
-      setCheckingApplication(false);
-      return;
-    }
-
-    const controller = new AbortController();
-    const jobId = job.id;
-    setCheckingApplication(true);
-    setApplicationCheckError('');
-    setAlreadyApplied(false);
-
-    const checkExistingApplication = async () => {
-      try {
-        const response = await fetch(
-            `/api/applications?applicantId=${DEMO_APPLICANT_ID}`,
-            { signal: controller.signal },
-        );
-        if (!response.ok) throw new Error(await getApiError(response));
-        const data: SubmittedApplication[] = await response.json();
-        if (!controller.signal.aborted) {
-          setAlreadyApplied(data.some(item => item.jobPostingId === jobId));
-        }
-      } catch (error) {
-        if (!controller.signal.aborted) {
-          setApplicationCheckError(
-              error instanceof Error ? error.message : 'Could not check your applications.',
-          );
-        }
-      } finally {
-        if (!controller.signal.aborted) setCheckingApplication(false);
-      }
-    };
-
-    void checkExistingApplication();
-    return () => controller.abort();
-  }, [job?.id, role]);
-
-  const close = () => {
-    if (submitting) return;
-    setStep(0);
-    setResumeFile(null);
-    setCover('');
-    onClose();
-  };
-
-  const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
-    event.preventDefault();
-
-    if (step === 1) {
-      if (!resumeFile) {
-        toast.error('Please upload a PDF or DOCX resume.');
-        return;
-      }
-      setStep(2);
-      return;
-    }
-
-    if (!job || !resumeFile || submitting) return;
-    if (role !== 'Applicant' || job.status !== 'Open') {
-      toast.error('This job cannot accept an application.');
-      return;
-    }
-
+function JobDetails({job,onClose}:{job:Job|null;onClose:()=>void}) {
+  const {applications,profile,role,actor,saved,toggleSave,submit}=useRecruiting();
+  const [step,setStep]=useState(0);
+  const [file,setFile]=useState<File|null>(null);
+  const [cover,setCover]=useState('');
+  const [submitting,setSubmitting]=useState(false);
+  const applied=Boolean(job && applications.some(a=>a.jobId===job.id));
+  const close=()=>{if(submitting)return;setStep(0);setFile(null);setCover('');onClose();};
+  const onSubmit=async(e:FormEvent<HTMLFormElement>)=>{
+    e.preventDefault();
+    if(step===1){if(!file){toast.error('Please select a PDF or DOCX resume.');return;}setStep(2);return;}
+    if(!job || submitting) return;
     setSubmitting(true);
-    try {
-      // 1. Send the real file, not just its filename.
-      const formData = new FormData();
-      formData.append('file', resumeFile);
-      const uploadResponse = await fetch(
-          `/api/applicants/${DEMO_APPLICANT_ID}/resumes`,
-          { method: 'POST', body: formData },
-      );
-      if (!uploadResponse.ok) throw new Error(await getApiError(uploadResponse));
-      const uploaded: UploadedResume = await uploadResponse.json();
-
-      // 2. Submit the application with the backend resume ID.
-      const response = await fetch('/api/applications', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          applicantId: DEMO_APPLICANT_ID,
-          jobPostingId: job.id,
-          resumeId: uploaded.id,
-          coverLetter: cover,
-        }),
-      });
-      if (!response.ok) throw new Error(await getApiError(response));
-
-      // Re-opening this job also rechecks the server, so refreshes stay correct.
-      setAlreadyApplied(true);
-      toast.success('Application submitted successfully.');
-      setStep(0);
-      setResumeFile(null);
-      setCover('');
-      onClose();
-    } catch (error) {
-      toast.error(error instanceof Error ? error.message : 'Failed to submit application.');
-    } finally {
-      setSubmitting(false);
-    }
+    try{const ok=await submit(job,file,cover);if(ok)closeAfterSubmit();}
+    finally{setSubmitting(false);}
   };
-
-  return (
-      <Dialog open={Boolean(job)} onOpenChange={open => { if (!open) close(); }}>
-        <DialogContent className="max-h-[90vh] max-w-[660px] overflow-y-auto">
-          {job && (
-              <>
-                <div className="flex items-center gap-3">
-                  <CompanyLogo job={job} />
-                  <div>
-                    <p className="text-xs text-muted-foreground">{job.company}</p>
-                    <DialogTitle className="mt-1 text-xl">
-                      {step ? 'Apply for ' : ''}{job.title}
-                    </DialogTitle>
-                  </div>
-                </div>
-                <DialogDescription>{job.location} · {job.type} · {job.mode}</DialogDescription>
-
-                {step === 0 ? (
-                    <>
-                      <div className="flex gap-2">
-                        <span className="tag">{job.salary}</span>
-                        <span className="tag">{job.level}</span>
-                        <span className={`status ${job.status.toLowerCase()}`}>{job.status}</span>
-                      </div>
-                      <section className="mt-3">
-                        <h3 className="section-heading">About the role</h3>
-                        <p className="mt-3 text-sm leading-7 text-muted-foreground">{job.description}</p>
-                        <h3 className="mt-5 text-sm font-semibold">What you’ll bring</h3>
-                        <ul className="mt-2 list-disc space-y-2 pl-5 text-sm leading-6 text-muted-foreground">
-                          <li>Strong communication and collaboration skills.</li>
-                          <li>Relevant experience or coursework in {job.category.toLowerCase()}.</li>
-                          <li>A thoughtful approach to solving problems and learning new things.</li>
-                        </ul>
-                        <p className="mt-5 flex items-center gap-2 text-xs text-muted-foreground">
-                          <Clock className="size-4" /> Applications close {formatDate(job.closes)}.
-                        </p>
-                      </section>
-                      {applicationCheckError && role === 'Applicant' && (
-                          <p role="alert" className="mt-3 text-xs text-destructive">
-                            Could not verify existing applications: {applicationCheckError}
-                          </p>
-                      )}
-                      <div className="mt-4 flex flex-wrap gap-3 border-t pt-5">
-                        <Button
-                            disabled={checkingApplication || !!applicationCheckError || alreadyApplied || job.status !== 'Open'}
-                            onClick={() => {
-                              if (role !== 'Applicant') {
-                                toast.error('Choose the applicant workspace to apply.');
-                                return;
-                              }
-                              setResumeFile(null);
-                              setCover('');
-                              setStep(1);
-                            }}
-                        >
-                          {checkingApplication ? 'Checking...' : alreadyApplied ? (
-                              <><Check />Already applied</>
-                          ) : job.status !== 'Open' ? 'Applications closed' : (
-                              <>Apply now<ArrowUpRight /></>
-                          )}
-                        </Button>
-                        <Button variant="outline" onClick={() => toggleSave(job.id)}>
-                          <Bookmark />{saved.includes(job.id) ? 'Saved' : 'Save job'}
-                        </Button>
-                      </div>
-                    </>
-                ) : (
-                    <form className="space-y-4" onSubmit={event => { void handleSubmit(event); }}>
-                      <div className="flex items-center gap-3 border-y py-3 text-xs">
-                        <span className={step === 1 ? 'font-semibold text-primary' : 'text-muted-foreground'}>1. Application materials</span>
-                        <ArrowRight className="size-3" />
-                        <span className={step === 2 ? 'font-semibold text-primary' : 'text-muted-foreground'}>2. Review & submit</span>
-                      </div>
-                      {step === 1 ? (
-                          <>
-                            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-                              <label className="field">Full name<input value={profile.name} readOnly /></label>
-                              <label className="field">Email address<input type="email" value={profile.email} readOnly /></label>
-                            </div>
-                            <p className="text-[11px] text-muted-foreground">
-                              Demo mode: applications are saved under backend Applicant ID {DEMO_APPLICANT_ID}.
-                              The displayed profile is currently frontend-only.
-                            </p>
-                            <div className="field">
-                              Resume
-                              <label className="cursor-pointer rounded-md border border-dashed p-5 text-center">
-                                <Upload className="mx-auto mb-2 size-5 text-primary" />
-                                <span className="block text-xs">{resumeFile?.name || 'Choose your resume'}</span>
-                                <span className="mt-1 block text-[10px] text-muted-foreground">PDF or DOCX · Maximum 5 MB</span>
-                                <input
-                                    aria-label="Upload application resume"
-                                    type="file"
-                                    className="sr-only"
-                                    accept=".pdf,.docx"
-                                    onChange={event => {
-                                      const file = event.target.files?.[0];
-                                      if (!file) return;
-                                      if (!/\.(pdf|docx)$/i.test(file.name) || file.size === 0 || file.size > MAX_RESUME_BYTES) {
-                                        setResumeFile(null);
-                                        event.target.value = '';
-                                        toast.error('Choose a nonempty PDF or DOCX file under 5 MB.');
-                                        return;
-                                      }
-                                      setResumeFile(file);
-                                    }}
-                                />
-                              </label>
-                            </div>
-                            <label className="field">
-                              Cover letter <span className="font-normal text-muted-foreground">Optional</span>
-                              <textarea value={cover} onChange={event => setCover(event.target.value)} placeholder="What draws you to this opportunity?" />
-                            </label>
-                          </>
-                      ) : (
-                          <>
-                            <div className="space-y-4 py-2 text-sm">
-                              <div>
-                                <p className="text-xs text-muted-foreground">Applicant (demo)</p>
-                                <p className="mt-1">Applicant ID {DEMO_APPLICANT_ID}</p>
-                              </div>
-                              <div>
-                                <p className="text-xs text-muted-foreground">Resume</p>
-                                <p className="mt-1 flex items-center gap-2"><BriefcaseBusiness className="size-4" />{resumeFile?.name}</p>
-                              </div>
-                              {cover && (
-                                  <div>
-                                    <p className="text-xs text-muted-foreground">Cover letter</p>
-                                    <p className="mt-1 whitespace-pre-wrap">{cover}</p>
-                                  </div>
-                              )}
-                            </div>
-                            <label className="flex items-start gap-2 text-xs leading-5">
-                              <input required type="checkbox" className="mt-1" />
-                              I confirm that my information is accurate and I’m ready to submit this application.
-                            </label>
-                          </>
-                      )}
-                      <div className="flex justify-between border-t pt-4">
-                        <Button type="button" variant="ghost" disabled={submitting} onClick={() => setStep(step - 1)}>Back</Button>
-                        <Button type="submit" disabled={submitting}>
-                          {submitting ? 'Submitting...' : step === 1 ? 'Review application' : 'Submit application'}
-                          {!submitting && <ArrowRight />}
-                        </Button>
-                      </div>
-                    </form>
-                )}
-              </>
-          )}
-        </DialogContent>
-      </Dialog>
-  );
+  const closeAfterSubmit=()=>{setStep(0);setFile(null);setCover('');onClose();};
+  return <Dialog open={Boolean(job)} onOpenChange={o=>{if(!o)close();}}><DialogContent className="max-h-[90vh] max-w-[660px] overflow-y-auto">{job && <>
+    <div className="flex items-center gap-3"><CompanyLogo job={job}/><div><p className="text-xs text-muted-foreground">{job.company}</p><DialogTitle className="mt-1 text-xl">{step?'Apply for ':''}{job.title}</DialogTitle></div></div>
+    <DialogDescription>{job.location} · {job.type}</DialogDescription>
+    {step===0 ? <><div className="flex gap-2"><span className="tag">{job.salary}</span><span className={`status ${job.status.toLowerCase()}`}>{job.status}</span></div>
+      <section className="mt-3"><h3 className="section-heading">About the role</h3><p className="mt-3 text-sm leading-7 text-muted-foreground">{job.description}</p><p className="mt-5 flex items-center gap-2 text-xs text-muted-foreground"><Clock className="size-4"/>Applications close {formatDate(job.closes)}</p></section>
+      <div className="mt-4 flex flex-wrap gap-3 border-t pt-5"><Button disabled={applied || job.status!=='Open' || !actor || role!=='Applicant'} onClick={()=>{setFile(null);setStep(1);}}>{applied?<><Check/>Already applied</>:job.status!=='Open'?'Applications closed':<>Apply now<ArrowUpRight/></>}</Button>{role==='Applicant'&&<Button variant="outline" onClick={()=>{void toggleSave(job.id);}}><Bookmark/>{saved.includes(job.id)?'Saved':'Save job'}</Button>}</div>
+    </> : <form className="space-y-4" onSubmit={e=>{void onSubmit(e);}}><div className="flex items-center gap-3 border-y py-3 text-xs"><span className={step===1?'font-semibold text-primary':'text-muted-foreground'}>1. Application materials</span><ArrowRight className="size-3"/><span className={step===2?'font-semibold text-primary':'text-muted-foreground'}>2. Review & submit</span></div>
+      {step===1?<><div className="grid grid-cols-1 gap-3 sm:grid-cols-2"><label className="field">Full name<input readOnly value={profile.name}/></label><label className="field">Email<input readOnly value={profile.email}/></label></div>
+        <div className="field">Resume<label className="cursor-pointer rounded-md border border-dashed p-5 text-center"><Upload className="mx-auto mb-2 size-5 text-primary"/><span className="block text-xs">{file?.name||'Choose resume'}</span><span className="text-[10px] text-muted-foreground">PDF or DOCX · max 5 MB</span><input type="file" className="sr-only" accept=".pdf,.docx" aria-label="Upload application resume" onChange={e=>{const f=e.target.files?.[0];if(!f)return;if(!/\.(pdf|docx)$/i.test(f.name)||f.size===0||f.size>5*1024*1024){toast.error('Invalid resume (max 5 MB)');setFile(null);return;}setFile(f);}}/></label></div><label className="field">Cover letter (optional)<textarea value={cover} onChange={e=>setCover(e.target.value)}/></label>
+        </>:<><p className="text-xs">Applicant: {profile.name} · {profile.email}</p><p className="flex items-center gap-2 text-xs"><BriefcaseBusiness className="size-4"/>{file?.name}</p><label className="flex items-start gap-2 text-xs"><input required type="checkbox"/>I confirm that my information is accurate.</label></>}
+      <div className="flex justify-between border-t pt-4"><Button type="button" variant="ghost" disabled={submitting} onClick={()=>setStep(step-1)}>Back</Button><Button type="submit" disabled={submitting}>{submitting?'Submitting...':step===1?'Review application':'Submit application'}<ArrowRight/></Button></div>
+    </form>}</>}</DialogContent></Dialog>;
 }

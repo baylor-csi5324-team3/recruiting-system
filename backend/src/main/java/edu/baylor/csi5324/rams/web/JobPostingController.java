@@ -9,6 +9,7 @@ import edu.baylor.csi5324.rams.service.NotFoundException;
 import edu.baylor.csi5324.rams.service.ValidationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -68,6 +69,19 @@ public class JobPostingController {
                               @RequestHeader(RECRUITER_HEADER) Long recruiterId) {
         Recruiter recruiter = identifiedRecruiter(recruiterId);
         return jobPostingService.publish(postingId, recruiter);          // 3.1
+    }
+
+    @PutMapping("/{postingId}")
+    public JobPosting edit(@PathVariable Long postingId, @RequestBody PostingDetails details,
+                           @RequestHeader(RECRUITER_HEADER) Long recruiterId) {
+        validate(details);
+        return jobPostingService.updateDetails(postingId, details, identifiedRecruiter(recruiterId));
+    }
+
+    @PostMapping("/{postingId}/close")
+    public JobPosting close(@PathVariable Long postingId,
+                            @RequestHeader(RECRUITER_HEADER) Long recruiterId) {
+        return jobPostingService.close(postingId, identifiedRecruiter(recruiterId));
     }
 
     /** Step 4: extension 4a (missing detail) and 4b (closing date not later than today). */

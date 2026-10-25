@@ -174,10 +174,10 @@ public class Application {
                             || nextStage == ApplicationStage.REJECTED
                             || nextStage == ApplicationStage.WITHDRAWN;
 
+            // Cannot withdraw after recieving an offer, only accept or decline
             case OFFER ->
                     nextStage == ApplicationStage.ACCEPTED
-                            || nextStage == ApplicationStage.DECLINED
-                            || nextStage == ApplicationStage.WITHDRAWN;
+                            || nextStage == ApplicationStage.DECLINED;
 
             case ACCEPTED, DECLINED, REJECTED, WITHDRAWN -> false;
         };
@@ -223,6 +223,30 @@ public class Application {
         );
 
         this.stage = ApplicationStage.UNDER_REVIEW;
+    }
+
+    public boolean checkWithdrawable() {
+        return stage == ApplicationStage.SUBMITTED
+                || stage == ApplicationStage.UNDER_REVIEW
+                || stage == ApplicationStage.INTERVIEW;
+    }
+
+    public void withdraw(
+            LocalDateTime changedAt,
+            Long changedByUserId) {
+
+        if (!checkWithdrawable()) {
+            throw new IllegalStateException(
+                    "Only applications in SUBMITTED, UNDER_REVIEW, "
+                            + "or INTERVIEW can be withdrawn."
+            );
+        }
+
+        updateStage(
+                ApplicationStage.WITHDRAWN,
+                changedAt,
+                changedByUserId
+        );
     }
 
     public List<StageRecord> getStageHistory() {

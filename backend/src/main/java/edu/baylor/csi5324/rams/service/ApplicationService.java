@@ -137,6 +137,46 @@ public class ApplicationService {
 
         return application.getDetails();
     }
+
+    public ApplicationSummary withdrawApplication(
+            Long applicationId,
+            Long applicantId) {
+
+        if (applicationId == null || applicantId == null) {
+            throw new ValidationException(
+                    "Application ID and Applicant ID are required."
+            );
+        }
+
+        Application application =
+                findOwnedApplication(applicationId, applicantId);
+
+        Long changedByUserId =
+                application.getApplicant().getAccount().getId();
+
+        try {
+            application.withdraw(
+                    LocalDateTime.now(clock),
+                    changedByUserId
+            );
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new ValidationException(e.getMessage());
+        }
+
+        return applications.saveAndFlush(application).getDetails();
+    }
+
+    public ApplicationSummary extendJobOffer(
+            Long applicationId,
+            Long recruiterId) {
+
+        return updateStage(
+                applicationId,
+                recruiterId,
+                ApplicationStage.OFFER
+        );
+    }
+
     /**
      * Update Application Stage.
      * Only active recruiters from the same company

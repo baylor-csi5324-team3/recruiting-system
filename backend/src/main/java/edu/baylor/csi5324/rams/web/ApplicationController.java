@@ -73,5 +73,25 @@ public class ApplicationController {
         );
     }
 
+    @PostMapping("/{applicationId}/withdraw")
+    public ApplicationSummary withdrawApplication(
+            @PathVariable Long applicationId,
+            @RequestHeader(APPLICANT_HEADER) Long applicantId) {
 
+        return applicationService.withdrawApplication(
+                applicationId,
+                applicantId
+        );
+    }
+
+    @PostMapping("/{applicationId}/extend-offer")
+    public ApplicationSummary extendJobOffer(
+            @PathVariable Long applicationId,
+            @RequestHeader(RECRUITER_HEADER) Long recruiterId) {
+
+        return applicationService.extendJobOffer(
+                applicationId,
+                recruiterId
+        );
+    }
 }

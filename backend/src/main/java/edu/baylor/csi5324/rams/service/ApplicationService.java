@@ -202,6 +202,36 @@ public class ApplicationService {
         return applications.saveAndFlush(application).getDetails();
     }
 
+    public ApplicationSummary respondToOffer(
+            Long applicationId,
+            Long applicantId,
+            ApplicationStage decision) {
+
+        // Only ACCEPTED or DECLINED is allowed.
+        if (decision != ApplicationStage.ACCEPTED
+                && decision != ApplicationStage.DECLINED) {
+            throw new ValidationException(
+                    "Offer response must be ACCEPTED or DECLINED.");
+        }
+
+        // Verify applicant identity and application ownership.
+        Application application =
+                findOwnedApplication(applicationId, applicantId);
+
+        // Update the application stage.
+        try {
+            application.updateStage(
+                    decision,
+                    LocalDateTime.now(clock)
+            );
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            throw new ValidationException(e.getMessage());
+        }
+
+        // Persist the updated application.
+        return applications.saveAndFlush(application).getDetails();
+    }
+
     // 查询申请，同时校验账号状态和申请归属。
     private Application findOwnedApplication(
             Long applicationId,

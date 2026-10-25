@@ -1,72 +1,191 @@
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
-import { initialJobs, initialApplications, initialInterviews, initialAccounts, type Role, type Stage, type Job, type Application, type Interview } from './data';
-import { submitApplication } from '@/lib/api';
+import type { Application, Interview, Job, Role, Stage } from './data';
+import { api, bodyJson, convertApplication, convertJob, toBackendStage, toBackendType,
+  type Actor, type AccountRow, type BackendApplication, type BackendJob, type UserProfile } from '@/lib/recruiting-api';
 
+const blankProfile: UserProfile = { name: '', email: '', phone: '', location: '', headline: '', bio: '', resume: '' };
 function useRecruitingState() {
   const [role, setRole] = useState<Role>('Applicant');
-  const [jobs, setJobs] = useState(initialJobs);
-  const [saved, setSaved] = useState<number[]>([3, 4]);
-  const [applications, setApplications] = useState(initialApplications);
-  const [interviews, setInterviews] = useState(initialInterviews);
-  const [accounts, setAccounts] = useState(initialAccounts);
-  const [profile, setProfile] = useState({ name: 'Alex Morgan', email: 'alex.morgan@example.com', phone: '+1 (254) 555-0142', location: 'Waco, TX', headline: 'Product designer & creative problem solver', bio: 'Creating thoughtful digital experiences. Currently exploring opportunities in design and technology.', resume: 'Alex_Morgan_Resume.pdf' });
-  const [audit, setAudit] = useState<string[]>([]);
-  const record = (message: string) => setAudit(prev => [`${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} · ${role === 'Applicant' ? profile.name : role === 'Recruiter' ? 'Taylor Brooks' : 'Robin Parker'} · ${message}`, ...prev]);
-  const toggleSave = (id: number) => { if (role !== 'Applicant') { toast.error('Sign in as an applicant to save jobs.'); return; } setSaved(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]); };
+  const [actors, setActors] = useState<Actor[]>([]);
+  const [selectedActorId, setSelectedActorId] = useState<number | null>(null);
+  const [jobs, setJobs] = useState<Job[]>([]);
+  const [applications, setApplications] = useState<Application[]>([]);
+  const [interviews, setInterviews] = useState<Interview[]>([]);
+  const [accounts, setAccounts] = useState<AccountRow[]>([]);
+  const [saved, setSaved] = useState<number[]>([]);
+  const [profile, setProfile] = useState<UserProfile>(blankProfile);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState('');
+  const actor = useMemo(() => actors.find(x => x.role === role && x.id === selectedActorId) ?? actors.find(x => x.role === role), [actors, role, selectedActorId]);
+  const applicantId = (role === 'Applicant' ? actor?.id : actors.find(x => x.role === 'Applicant')?.id) ?? null;
+  const recruiterId = actors.find(x => x.role === 'Recruiter')?.id ?? null;
+  const administratorId = actors.find(x => x.role === 'Administrator')?.id ?? null;
+  // Audit history is not available from the current backend. Do not fabricate entries.
+  const audit: string[] = [];
+  const record = (_message: string) => {};
 
-  const submit = async (
-      job: Job,
-      resumeFile: File | null,
-      coverLetter: string
-  ): Promise<boolean> => {
-    if (role !== 'Applicant' || job.status !== 'Open') {
-      toast.error('This job cannot accept an application.');
-      return false;
-    }
+  useEffect(() => {
+    let live = true;
+    api<Actor[]>('/api/demo/actors').then(rows => { if (live) setActors(rows); })
+      .catch(e => { if (live) { setError(e instanceof Error ? e.message : 'Unable to load actors'); setLoading(false); } });
+    return () => { live = false; };
+  }, []);
 
-    if (!resumeFile) {
-      toast.error('Please select a resume.');
-      return false;
-    }
-
+  const selectActor = (next: Actor) => { setRole(next.role); setSelectedActorId(next.id); };
+  const refresh = async () => {
+    if (!actors.length) return;
+    setLoading(true); setError('');
     try {
-      // Demo applicant ID.
-      // Confirm it using GET /api/applicants.
-      const applicantId = 1;
+      const qs = role === 'Recruiter' && actor ? `?recruiterId=${actor.id}` : '';
+      const jobsRequest = api<BackendJob[]>('/api/demo/jobs' + qs);
+      const appsRequest = role === 'Applicant' && actor ? api<BackendApplication[]>(`/api/demo/applications?applicantId=${actor.id}`)
+        : role === 'Recruiter' && actor ? api<BackendApplication[]>(`/api/demo/applications?recruiterId=${actor.id}`) : Promise.resolve([]);
+      const interviewsRequest = role === 'Applicant' && actor ? api<Interview[]>(`/api/demo/interviews?applicantId=${actor.id}`)
+        : role === 'Recruiter' && actor ? api<Interview[]>(`/api/demo/interviews?recruiterId=${actor.id}`) : Promise.resolve([]);
+      const profileRequest = applicantId !== null ? api<UserProfile>(`/api/demo/profile/${applicantId}`) : Promise.resolve(blankProfile);
+      const savedRequest = applicantId !== null ? api<number[]>(`/api/demo/saved/${applicantId}`) : Promise.resolve([]);
+      const accountsRequest = role === 'Administrator' && actor ? api<AccountRow[]>(`/api/demo/accounts?administratorId=${actor.id}`) : Promise.resolve([]);
+      const [bj,ba,bi,p,sv,ac] = await Promise.all([jobsRequest,appsRequest,interviewsRequest,profileRequest,savedRequest,accountsRequest]);
+      setJobs(bj.map(convertJob)); setApplications(ba.map(convertApplication));
+      setInterviews(bi); setProfile(p); setSaved(sv); setAccounts(ac);
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Failed to load backend data';
+      setError(msg); toast.error(msg);
+      setJobs([]); setApplications([]); setInterviews([]); setAccounts([]); setSaved([]); setProfile(blankProfile);
+    } finally { setLoading(false); }
+  };
+  useEffect(() => { void refresh(); }, [actors, role, selectedActorId]);
+  async function after<T>(action: () => Promise<T>, message: string): Promise<T> {
+    const result = await action();
+    await refresh();
+    toast.success(message);
+    return result;
+  }
+  const toggleSave = async (id: number) => {
+    if (role !== 'Applicant' || applicantId === null) { toast.error('Choose an applicant workspace'); return; }
+    try { await after(() => api<number[]>(`/api/demo/saved/${applicantId}`, {
+      method: 'PUT', ...bodyJson(saved.includes(id) ? saved.filter(x=>x!==id) : [...saved,id])
+    }), 'Saved jobs updated'); } catch (e) { toast.error(String(e)); }
+  };
+  const submit = async (job: Job, file: File | null, cover: string): Promise<boolean> => {
+    if (!actor || role !== 'Applicant' || !file) { toast.error('Select a resume and applicant'); return false; }
+    if (file.size === 0 || file.size > 5 * 1024 * 1024 || !/\.(pdf|docx)$/i.test(file.name)) {
+      toast.error('Choose a nonempty PDF or DOCX under 5 MB'); return false;
+    }
+    try {
+      const formData = new FormData(); formData.append('file', file);
+      const resume = await api<{id:number}>(`/api/applicants/${actor.id}/resumes`, { method:'POST', body:formData });
+      await after(() => api(`/api/applications`, { method:'POST', ...bodyJson({
+        applicantId: actor.id, jobPostingId: job.id, resumeId: resume.id, coverLetter: cover
+      }) }), 'Application submitted');
+      return true;
+    } catch (e) { toast.error(`Submission failed: ${String(e)}`); return false; }
+  };
+  const updateStage = async (app: Application, stage: Stage): Promise<boolean> => {
+    try {
+      if (role === "Applicant" && actor) {
+        // Withdraw is a separate use case.
+        if (stage !== "Withdrawn") {
+          throw new Error("Applicants cannot update application stages.");
+        }
 
-      await submitApplication(
-          applicantId,
-          job.id,
-          resumeFile,
-          coverLetter
-      );
+        await after(
+          () =>
+            api(`/api/applications/${app.id}/withdraw`, {
+              method: "POST",
+              headers: {
+                "X-Applicant-Id": String(actor.id),
+              },
+            }),
+          "Application withdrawn",
+        );
+      } else if (role === "Recruiter" && actor) {
+        await after(
+          () =>
+            api(`/api/applications/${app.id}/stage`, {
+              method: "PATCH",
+              ...bodyJson({ stage: toBackendStage[stage] }, { "X-Recruiter-Id": String(actor.id) }),
+            }),
+          "Application stage updated",
+        );
+      } else {
+        throw new Error("Select an appropriate workspace");
+      }
 
-      record(`Submitted an application for ${job.title}`);
-      toast.success('Application submitted successfully.');
       return true;
     } catch (error) {
-      console.error(error);
-      toast.error('Failed to submit application.');
+      toast.error(String(error));
       return false;
     }
   };
-
-  const updateStage = (app: Application, stage: Stage) => {
-    const job = jobs.find(j => j.id === app.jobId);
-    const owner = role === 'Applicant' && app.name === profile.name;
-    const recruiter = role === 'Recruiter' && job?.company === 'Linear';
-    const allowed = owner ? (stage === 'Withdrawn' && ['Submitted', 'Under review', 'Interview'].includes(app.stage)) || (app.stage === 'Offer' && ['Accepted', 'Declined'].includes(stage)) : recruiter && ((app.stage === 'Submitted' && stage === 'Under review') || (['Under review', 'Interview'].includes(app.stage) && ['Offer', 'Rejected'].includes(stage)) || (app.stage === 'Under review' && stage === 'Interview'));
-    if (!allowed) { toast.error('That stage change is not available.'); return; }
-    setApplications(prev => prev.map(a => a.id === app.id ? { ...a, stage, history: [...a.history, { stage, date: new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }), actor: owner ? profile.name : 'Taylor Brooks' }] } : a));
-    if (['Withdrawn', 'Rejected'].includes(stage)) setInterviews(prev => prev.map(i => i.applicationId === app.id ? { ...i, status: 'Cancelled' } : i));
-    record(`${app.name}: changed application stage to ${stage}`); toast.success(`Application updated to ${stage.toLowerCase()}.`);
+  const saveJob = async (job: Job) => {
+    if (role !== 'Recruiter' || !actor) { toast.error('Choose a recruiter workspace'); return false; }
+    try {
+      const details = { title:job.title, description:job.description, location:job.location,
+        employmentType:toBackendType(job.type), closingDate:job.closes };
+      const header = {'X-Recruiter-Id':String(actor.id)};
+      const existing = jobs.find(x => x.id === job.id);
+      let postingId = job.id;
+      if (existing) {
+        await api(`/api/postings/${job.id}`, { method:'PUT', ...bodyJson(details,header) });
+      } else {
+        const created = await api<{id:number}>('/api/postings', { method:'POST', ...bodyJson(details,header) });
+        postingId = created.id;
+      }
+      if (job.status === 'Open' && (!existing || existing.status === 'Draft')) {
+        await api(`/api/postings/${postingId}/publish`, { method:'POST', headers:header });
+      }
+      await refresh(); toast.success('Job posting saved on server'); return true;
+    } catch (e) { toast.error(String(e)); return false; }
   };
-  const saveJob = (job: Job) => { setJobs(prev => prev.some(j => j.id === job.id) ? prev.map(j => j.id === job.id ? job : j) : [job, ...prev]); record(`${job.status === 'Draft' ? 'Saved draft' : 'Updated posting'}: ${job.title}`); toast.success(job.status === 'Draft' ? 'Draft saved.' : 'Job posting published.'); };
-  const schedule = (interview: Interview) => { setInterviews(prev => prev.some(i => i.id === interview.id) ? prev.map(i => i.id === interview.id ? interview : i) : [...prev, interview]); const app = applications.find(a => a.id === interview.applicationId); if (app?.stage === 'Under review') updateStage(app, 'Interview'); record('Saved interview schedule'); toast.success('Interview scheduled.'); };
-  return { role, setRole, jobs, setJobs, saved, toggleSave, applications, submit, updateStage, interviews, setInterviews, schedule, accounts, setAccounts, profile, setProfile, saveJob, audit, record };
+  const closeJob = async (job: Job) => {
+    if (!actor || role !== 'Recruiter') return false;
+    try { await after(() => api(`/api/postings/${job.id}/close`, { method:'POST', headers:{'X-Recruiter-Id':String(actor.id)} }), 'Posting closed'); return true; }
+    catch (e) { toast.error(String(e)); return false; }
+  };
+  const updateAccount = async (accountId: number, change: { active?:boolean; role?:Role }) => {
+    if (role !== 'Administrator' || !actor) return false;
+    try {
+      await after(() => api(`/api/accounts/${accountId}/role-status`, { method:'PUT',
+        ...bodyJson({newRole:change.role?.toUpperCase(), newStatus:change.active===undefined?undefined:(change.active?'ACTIVE':'DEACTIVATED')}, {'X-Administrator-Id':String(actor.id)})
+      }), 'Account updated'); return true;
+    } catch (e) { toast.error(String(e)); return false; }
+  };
+  const schedule = async (interview: Interview) => {
+    if (!actor || role !== 'Recruiter') return false;
+    try {
+      await after(() => api(`/api/demo/interviews?recruiterId=${actor.id}`, {
+        method:'PUT', ...bodyJson({...interview, id:interview.id > 0 ? interview.id : null})
+      }), 'Interview saved'); return true;
+    } catch (e) { toast.error(String(e)); return false; }
+  };
+  const uploadProfileResume = async (file: File) => {
+    if (role !== 'Applicant' || !actor) return false;
+    if (file.size===0 || file.size>5*1024*1024 || !/\.(pdf|docx)$/i.test(file.name)) { toast.error('PDF or DOCX, maximum 5 MB'); return false; }
+    try {
+      const data=new FormData();data.append('file',file);
+      await after(()=>api(`/api/applicants/${actor.id}/resumes`,{method:'POST',body:data}),'Resume uploaded');
+      return true;
+    } catch(e){toast.error(String(e));return false;}
+  };
+  const saveProfile = async (draft: UserProfile) => {
+    if (applicantId === null || role !== 'Applicant') return false;
+    try {
+      const updated = await after(() => api<UserProfile>(`/api/demo/profile/${applicantId}`, { method:'PUT', ...bodyJson(draft) }), 'Profile saved');
+      setActors(prev=>prev.map(a=>a.role==='Applicant' && a.id===applicantId ? {...a,name:updated.name}:a));
+      return true;
+    } catch (e) { toast.error(String(e)); return false; }
+  };
+  return { role, setRole, actor, actors, applicantId, recruiterId, administratorId,
+    selectActor, selectedActorId, jobs, saved, toggleSave, applications, submit, updateStage, interviews, schedule,
+    accounts, profile, setProfile, saveProfile, uploadProfileResume, saveJob, closeJob, updateAccount,
+    audit, record, loading, error, refresh };
 }
 type RecruitingState = ReturnType<typeof useRecruitingState>;
 const RecruitingContext = createContext<RecruitingState | null>(null);
-export function RecruitingProvider({ children }: { children: ReactNode }) { const state = useRecruitingState(); return <RecruitingContext.Provider value={state}>{children}</RecruitingContext.Provider>; }
-export function useRecruiting() { const state = useContext(RecruitingContext); if (!state) throw new Error('RecruitingProvider is required'); return state; }
+export function RecruitingProvider({ children }: {children: ReactNode}) {
+  const state = useRecruitingState();
+  return <RecruitingContext.Provider value={state}>{children}</RecruitingContext.Provider>;
+}
+export function useRecruiting() { const c = useContext(RecruitingContext); if (!c) throw new Error('RecruitingProvider missing'); return c; }

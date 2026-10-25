@@ -53,6 +53,26 @@ public class JobPostingService {
         return jobPostings.save(draft);
     }
 
+    public JobPosting updateDetails(Long postingId, PostingDetails details, Recruiter recruiter) {
+        JobPosting posting = jobPostings.findById(postingId)
+                .orElseThrow(() -> new NotFoundException("No posting with id " + postingId));
+        if (!posting.belongsTo(recruiter.getCompany())) throw new ValidationException("The posting belongs to another company.");
+        if (details.title() == null || details.title().isBlank() || details.description() == null || details.description().isBlank()
+                || details.location() == null || details.location().isBlank() || details.employmentType() == null || details.employmentType().isBlank()
+                || details.closingDate() == null) throw new ValidationException("All job details are required.");
+        try { posting.updateDetails(details); }
+        catch (IllegalStateException e) { throw new ValidationException(e.getMessage()); }
+        return jobPostings.save(posting);
+    }
+    public JobPosting close(Long id, Recruiter recruiter) {
+        JobPosting posting = jobPostings.findById(id)
+                .orElseThrow(() -> new NotFoundException("No posting with id " + id));
+        if (!posting.belongsTo(recruiter.getCompany())) throw new ValidationException("The posting belongs to another company.");
+        try { posting.closePosting(); }
+        catch (IllegalStateException e) { throw new ValidationException(e.getMessage()); }
+        return jobPostings.save(posting);
+    }
+
     /** SD 3.1: records the draft as published with the recruiter and the publication time. */
     public JobPosting publish(Long postingId, Recruiter recruiter) {
         JobPosting posting = jobPostings.findById(postingId)

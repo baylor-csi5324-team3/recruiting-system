@@ -31,7 +31,7 @@ public class Applicant {
     }
 
     private String phone;
-    // JPA 使用的无参构造方法
+    // No-argument constructor required by JPA.
     protected Applicant() {
     }
 

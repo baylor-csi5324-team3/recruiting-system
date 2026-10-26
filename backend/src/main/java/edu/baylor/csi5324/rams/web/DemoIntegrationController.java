@@ -7,7 +7,6 @@ import edu.baylor.csi5324.rams.domain.*;
 import edu.baylor.csi5324.rams.repository.*;
 import edu.baylor.csi5324.rams.service.NotFoundException;
 import edu.baylor.csi5324.rams.service.ValidationException;
-import org.springframework.context.annotation.Profile;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 import java.io.IOException;
@@ -16,10 +15,9 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
-/** Course demonstration integration endpoints. Never enable the demo profile in production.
+/** Read models and small extras for the React front end (actors, jobs, applications, accounts, profile, saved jobs).
  * Existing application, posting and account business rules remain in their services. */
 @RestController
-@Profile("demo")
 @RequestMapping("/api/demo")
 @Transactional
 public class DemoIntegrationController {
@@ -55,8 +53,6 @@ public class DemoIntegrationController {
     public record AccountView(Long id, String name, String email, String role, boolean active) {}
     public record ProfileView(String name, String email, String phone, String location,
             String headline, String bio, String resume) {}
-    public record InterviewView(Long id, Long applicationId, String date, String time,
-            String location, String notes, String status) {}
 
     @GetMapping("/actors")
     public List<Actor> actors() {
@@ -158,37 +154,6 @@ public class DemoIntegrationController {
         return saved(id);
     }
 
-    @GetMapping("/interviews")
-    public List<InterviewView> interviews(@RequestParam(required = false) Long applicantId,
-                                           @RequestParam(required = false) Long recruiterId) {
-        List<InterviewView> all = savedInterviews();
-        if (applicantId != null) {
-            requireApplicant(applicantId);
-            return all.stream().filter(i -> applications.findById(i.applicationId()).map(a ->
-                    a.getApplicant().getId().equals(applicantId)).orElse(false)).toList();
-        }
-        if (recruiterId != null) {
-            Recruiter r = requireRecruiter(recruiterId);
-            return all.stream().filter(i -> applications.findById(i.applicationId()).map(a ->
-                    a.getJobPosting().belongsTo(r.getCompany())).orElse(false)).toList();
-        }
-        throw new ValidationException("An applicantId or recruiterId is required.");
-    }
-    @PutMapping("/interviews")
-    public InterviewView saveInterview(@RequestParam Long recruiterId, @RequestBody InterviewView data) {
-        Recruiter recruiter = requireRecruiter(recruiterId);
-        Application app = applications.findById(data.applicationId())
-                .orElseThrow(() -> new NotFoundException("Application not found."));
-        if (!app.getJobPosting().belongsTo(recruiter.getCompany())) throw new ValidationException("Not your company's application.");
-        List<InterviewView> list = new ArrayList<>(savedInterviews());
-        long id = data.id() == null || data.id() <= 0 ? list.stream().mapToLong(InterviewView::id).max().orElse(0)+1 : data.id();
-        InterviewView updated = new InterviewView(id, data.applicationId(), data.date(), data.time(), data.location(), data.notes(), data.status());
-        list.removeIf(i -> i.id().equals(id));
-        list.add(updated);
-        putSection("interviews", Map.of("rows", list));
-        return updated;
-    }
-
     private Applicant requireApplicant(Long id) {
         Applicant a = applicants.findById(id).orElseThrow(() -> new NotFoundException("Applicant not found."));
         if (a.getAccount().getRole()!=Role.APPLICANT || a.getAccount().getStatus()!=AccountStatus.ACTIVE)
@@ -207,11 +172,6 @@ public class DemoIntegrationController {
             throw new ValidationException("An active administrator account is required.");
     }
 
-    private synchronized List<InterviewView> savedInterviews() {
-        Object rows = section("interviews").get("rows");
-        if (rows == null) return List.of();
-        return mapper.convertValue(rows, new TypeReference<List<InterviewView>>(){});
-    }
     private synchronized Map<String,Object> section(String key) {
         return new HashMap<>(allState().getOrDefault(key, Map.of()));
     }

@@ -14,7 +14,7 @@ export async function api<T>(url: string, options?: RequestInit): Promise<T> {
       const value: unknown = await res.json();
       if (value && typeof value === 'object') {
         const e = value as Record<string, unknown>;
-        message = String(e.message ?? e.error ?? message);
+        message = String(e['message'] ?? e['error'] ?? message);
       }
     } catch { /* not a JSON API error */ }
     throw new Error(message);

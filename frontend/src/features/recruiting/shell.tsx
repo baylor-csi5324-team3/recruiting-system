@@ -1,6 +1,6 @@
 import { useState, type ReactNode } from 'react';
 import { Link, useLocation, useNavigate } from '@tanstack/react-router';
-import { Search, Bookmark, FileText, UserRound, BriefcaseBusiness, UsersRound, ShieldCheck, PanelLeftClose, PanelLeftOpen, ArrowUpRight, ChevronDown, LogOut, Bell, Check, Sprout, CalendarDays } from 'lucide-react';
+import { Search, Bookmark, FileText, UserRound, BriefcaseBusiness, UsersRound, ShieldCheck, PanelLeftClose, PanelLeftOpen, ArrowUpRight, ChevronDown, LogOut, Bell, Check, Sprout } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
@@ -12,14 +12,12 @@ export function Brand() { return <><span className="brand-mark"><Sprout strokeWi
 const applicantNav = [
   { label: 'Explore jobs', to: '/' as const, icon: Search },
   { label: 'Saved jobs', to: '/saved' as const, icon: Bookmark },
-  { label: 'My applications', to: '/applications' as const, icon: FileText },
-  { label: 'Interviews', to: '/interviews' as const, icon: CalendarDays }
+  { label: 'My applications', to: '/applications' as const, icon: FileText }
 ];
 
 const recruiterNav = [
   { label: 'Job postings', to: '/postings' as const, icon: BriefcaseBusiness },
-  { label: 'Candidates', to: '/candidates' as const, icon: UsersRound },
-  { label: 'Interviews', to: '/interviews' as const, icon: CalendarDays }
+  { label: 'Candidates', to: '/candidates' as const, icon: UsersRound }
 ];
 
 export function WorkspaceShell({ children }: { children: ReactNode }) {

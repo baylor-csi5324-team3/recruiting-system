@@ -1,10 +1,10 @@
 import { useEffect, useState, type FormEvent } from 'react';
-import { ArrowUpRight, FileText, CalendarDays, MapPin, Upload } from 'lucide-react';
+import { ArrowUpRight, FileText, Upload } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { useRecruiting } from './store';
 import { CompanyLogo } from './jobs';
-import { stageClass, formatDate, type Application, type Stage, type Interview } from './data';
+import { stageClass, formatDate, type Application, type Stage } from './data';
 import { type UserProfile } from '@/lib/recruiting-api';
 import { toast } from 'sonner';
 
@@ -16,7 +16,6 @@ export function ApplicationsPage({candidates=false}:{candidates?:boolean}) {
   const [search,setSearch]=useState('');
   const [selectedId,setSelectedId]=useState<number|null>(null);
   const [confirm,setConfirm]=useState<Stage|null>(null);
-  const [scheduleApp,setScheduleApp]=useState<Application|null>(null);
   const [busy,setBusy]=useState(false);
   const selected=applications.find(a=>a.id===selectedId);
   const selectedJob=jobs.find(j=>j.id===selected?.jobId);
@@ -280,11 +279,6 @@ export function ApplicationsPage({candidates=false}:{candidates?:boolean}) {
                           <Button onClick={() => setConfirm("Accepted")}>Record accepted</Button>
                         </>
                       )}
-                      {selected.stage === "Interview" && (
-                        <Button variant="outline" onClick={() => setScheduleApp(selected)}>
-                          Schedule interview
-                        </Button>
-                      )}
                     </>
                   )}
                 </div>
@@ -293,30 +287,10 @@ export function ApplicationsPage({candidates=false}:{candidates?:boolean}) {
           )}
         </DialogContent>
       </Dialog>
-      <InterviewForm application={scheduleApp} onClose={() => setScheduleApp(null)} />
     </>
   );
 }
 
-export function InterviewForm({application,existing,onClose}:{application:Application|null;existing?:Interview;onClose:()=>void}) {
-  const {schedule}=useRecruiting();
-  const [saving,setSaving]=useState(false);
-  const handle=async(e:FormEvent<HTMLFormElement>)=>{
-    e.preventDefault();if(!application)return;
-    const f=new FormData(e.currentTarget);const date=String(f.get('date')),time=String(f.get('time'));
-    if(new Date(`${date}T${time}`)<new Date()){toast.error('Choose a future date and time.');return;}
-    setSaving(true);
-    const ok=await schedule({id:existing?.id??0,applicationId:application.id,date,time,location:String(f.get('location')),notes:String(f.get('notes')),status:'Scheduled'});
-    setSaving(false);if(ok)onClose();
-  };
-  return <Dialog open={Boolean(application)} onOpenChange={o=>{if(!o)onClose();}}><DialogContent><DialogTitle>{existing?'Edit':'Schedule'} interview</DialogTitle><DialogDescription>Arrange an interview with {application?.name}</DialogDescription><form key={existing?.id??application?.id} className="space-y-4" onSubmit={e=>{void handle(e);}}><div className="grid grid-cols-2 gap-3"><label className="field">Date<input type="date" name="date" required min={new Date().toISOString().slice(0,10)} defaultValue={existing?.date}/></label><label className="field">Time<input type="time" name="time" required defaultValue={existing?.time??'10:00'}/></label></div><label className="field">Location / meeting link<input name="location" required defaultValue={existing?.location}/></label><label className="field">Notes<textarea name="notes" defaultValue={existing?.notes}/></label><div className="flex justify-end gap-2"><Button type="button" variant="outline" onClick={onClose}>Cancel</Button><Button type="submit" disabled={saving}>Save interview</Button></div></form></DialogContent></Dialog>;
-}
-export function InterviewsPage() {
-  const {interviews,applications,jobs,role,schedule,loading}=useRecruiting();
-  const [tab,setTab]=useState('Upcoming');const [edit,setEdit]=useState<Interview|null>(null);
-  const visible=interviews.filter(i=>i.status===(tab==='Cancelled'?'Cancelled':'Scheduled'));
-  return <><h1 className="page-heading">Interviews</h1><p className="mt-2 text-sm text-muted-foreground">Interview schedules are stored on the server.</p><div className="my-6 flex gap-1">{['Upcoming','Cancelled'].map(t=><Button key={t} variant={t===tab?'secondary':'ghost'} size="sm" onClick={()=>setTab(t)}>{t}</Button>)}</div>{loading?<p>Loading...</p>:<div className="space-y-4">{visible.map(i=>{const app=applications.find(a=>a.id===i.applicationId),job=jobs.find(j=>j.id===app?.jobId);return <article key={i.id} className="flex flex-wrap items-start gap-5 rounded-md border bg-card p-6"><div className="min-w-0 flex-1"><h2 className="section-heading">{job?.title??`Application #${i.applicationId}`}</h2><p className="mt-1 text-xs">{role==='Recruiter'?app?.name:job?.company} · {formatDate(i.date)} at {i.time}</p><p className="mt-3 flex gap-2 text-xs"><MapPin className="size-4"/>{i.location}</p><p className="mt-2 text-xs text-muted-foreground">{i.notes}</p></div><div className="flex flex-col gap-2"><span className="status interview">{i.status}</span>{role==='Recruiter'&&i.status==='Scheduled'&&<><Button variant="outline" size="sm" onClick={()=>setEdit(i)}>Edit</Button><Button variant="ghost" size="sm" onClick={()=>{void schedule({...i,status:'Cancelled'});}}>Cancel</Button></>}</div></article>})}{!visible.length&&<div className="empty-state"><CalendarDays className="mx-auto mb-4 size-8"/>No {tab.toLowerCase()} interviews.</div>}</div>}<InterviewForm application={applications.find(a=>a.id===edit?.applicationId)??null} existing={edit??undefined} onClose={()=>setEdit(null)}/></>;
-}
 export function ProfilePage() {
   const {profile,role,saveProfile,uploadProfileResume,loading}=useRecruiting();
   const [draft,setDraft]=useState<UserProfile>(profile);

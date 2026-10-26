@@ -51,13 +51,9 @@ public class RegistrationService {
         UserAccount account = accounts.saveAndFlush(
                 new UserAccount(request.email(), hash, request.role(), AccountStatus.ACTIVE));
         if (request.role() == Role.RECRUITER) {
-            recruiters.saveAndFlush(new Recruiter(request.recruiterName(), account, company));
-        }
-        if (request.role() == Role.APPLICANT) {
-            // The applicant profile exists from the first day; Update Applicant Profile (4.2.1.4) edits it later.
-            String name = request.applicantName() != null ? request.applicantName()
-                    : request.email().substring(0, request.email().indexOf('@'));
-            applicants.saveAndFlush(new Applicant(name, account));
+            recruiters.saveAndFlush(new Recruiter(request.fullName(), account, company));
+        } else {
+            applicants.saveAndFlush(new Applicant(request.fullName(), account));
         }
         return account;
     }

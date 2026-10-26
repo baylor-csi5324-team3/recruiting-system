@@ -74,38 +74,32 @@ export function WorkspaceShell({ children }: { children: ReactNode }) {
           email: email.trim(),
           password,
           role: authRole.toUpperCase(),
+          fullName: fullName.trim(),
           companyName: authRole === 'Recruiter'
               ? companyName.trim()
-              : null,
-          recruiterName: authRole === 'Recruiter'
-              ? fullName.trim()
-              : null,
-          applicantName: authRole === 'Applicant'
-              ? fullName.trim()
               : null,
         }),
       });
 
       if (!response.ok) {
-        const message = await response.text();
-        throw new Error(
-            `Registration failed (${response.status}): ${message}`
+        // Show only the back end's message (e.g. a duplicate e-mail), never the raw response.
+        const body = await response.json().catch(() => null);
+        setRegisterError(
+            typeof body?.message === 'string' && body.message.trim()
+                ? body.message
+                : 'Registration could not be completed. Please try again.'
         );
+        return;
       }
 
-      const result = await response.json();
-
-      setRegisterSuccess(
-          `Account created successfully! Account ID: ${result.accountId}`
-      );
-
+      // Registration does not sign the user in: switch to Sign in and keep the e-mail.
+      setRegister(false);
+      setRegisterSuccess('Account created successfully. Please sign in.');
       setPassword('');
-    } catch (error) {
-      setRegisterError(
-          error instanceof Error
-              ? error.message
-              : 'An unexpected error occurred.'
-      );
+      setFullName('');
+      setCompanyName('');
+    } catch {
+      setRegisterError('Unable to reach the registration service. Please try again.');
     } finally {
       setRegisterLoading(false);
     }

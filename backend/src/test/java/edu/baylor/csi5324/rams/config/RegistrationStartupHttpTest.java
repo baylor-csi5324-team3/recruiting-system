@@ -54,7 +54,7 @@ class RegistrationStartupHttpTest {
         for (String role : List.of("APPLICANT", "RECRUITER")) {
             String email = role.toLowerCase(java.util.Locale.ROOT) + ".http@example.com";
             String body = "{\"email\":\"" + email + "\",\"password\":\"Real HTTP secret\",\"role\":\"" + role
-                    + "\",\"companyName\":\" baylor TECH \",\"recruiterName\":\"HTTP Recruiter\"}";
+                    + "\",\"companyName\":\" baylor TECH \",\"fullName\":\"HTTP User\"}";
             var response = client.send(HttpRequest.newBuilder(URI.create("http://localhost:" + port + "/api/accounts/register"))
                     .header("Content-Type", "application/json").POST(HttpRequest.BodyPublishers.ofString(body)).build(), HttpResponse.BodyHandlers.ofString());
             assertEquals(201, response.statusCode(), response.body());

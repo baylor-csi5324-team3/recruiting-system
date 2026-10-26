@@ -27,6 +27,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 class RegistrationIntegrationTest {
     @Autowired RegistrationService service;
     @Autowired UserAccountRepository accounts;
+    @Autowired ApplicantRepository applicants;
     @Autowired CompanyRepository companies;
     @MockitoSpyBean RecruiterRepository recruiters;
     @Autowired PasswordEncoder encoder;
@@ -35,17 +36,18 @@ class RegistrationIntegrationTest {
 
     @BeforeEach
     void clear() {
+        applicants.deleteAll();
         recruiters.deleteAll();
         accounts.deleteAll();
         companies.deleteAll();
     }
 
     private RegisterAccountRequest request(String email, Role role, String company) {
-        return new RegisterAccountRequest(email, SECRET, role, company, "Rhea Recruiter");
+        return new RegisterAccountRequest(email, SECRET, role, company, " Rhea Lee ");
     }
 
     @Test
-    void applicantPersistsWithBCryptAndNoCompanyOrRecruiter() {
+    void applicantPersistsWithBCryptAndNamedApplicantButNoCompanyOrRecruiter() {
         UserAccount account = service.register(request(" Person@Example.COM ", Role.APPLICANT, "Ignored Company"));
         UserAccount saved = accounts.findById(account.getId()).orElseThrow();
         assertEquals("person@example.com", saved.getEmail());
@@ -54,6 +56,10 @@ class RegistrationIntegrationTest {
         assertNotEquals(SECRET, saved.getPasswordHash());
         assertTrue(encoder.matches(SECRET, saved.getPasswordHash()));
         assertFalse(encoder.matches("wrong", saved.getPasswordHash()));
+        Applicant applicant = applicants.findAll().getFirst();
+        assertEquals(account.getId(), applicant.getAccount().getId());
+        assertEquals("Rhea Lee", applicant.getName());
+        assertEquals(1, applicants.count());
         assertEquals(0, companies.count());
         assertEquals(0, recruiters.count());
     }
@@ -63,10 +69,11 @@ class RegistrationIntegrationTest {
         UserAccount account = service.register(request("hr@example.com", Role.RECRUITER, " Baylor Tech "));
         Recruiter recruiter = recruiters.findByAccountId(account.getId()).orElseThrow();
         assertEquals(account.getId(), recruiter.getAccount().getId());
-        assertEquals("Rhea Recruiter", recruiter.getName());
+        assertEquals("Rhea Lee", recruiter.getName());
         assertEquals("Baylor Tech", recruiter.getCompany().getName());
         assertEquals(1, accounts.count());
         assertEquals(1, companies.count());
+        assertEquals(0, applicants.count());
     }
 
     @Test
@@ -85,6 +92,7 @@ class RegistrationIntegrationTest {
             assertThrows(ValidationException.class, () -> service.register(request(email, Role.RECRUITER, "New Company")));
         }
         assertEquals(1, accounts.count());
+        assertEquals(1, applicants.count());
         assertEquals(0, companies.count());
         assertEquals(0, recruiters.count());
     }
@@ -92,7 +100,7 @@ class RegistrationIntegrationTest {
     @Test
     void httpApplicantRegistrationReturns201AndSafePersistedAccount() throws Exception {
         mvc.perform(post("/api/accounts/register").contentType(MediaType.APPLICATION_JSON).content("""
-                {"email":"http@example.com","password":"HTTP secret","role":"APPLICANT"}
+                {"email":"http@example.com","password":"HTTP secret","role":"APPLICANT","fullName":"Ann Lee"}
                 """))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.accountId").isNumber())
                 .andExpect(jsonPath("$.email").value("http@example.com"))
@@ -113,7 +121,7 @@ class RegistrationIntegrationTest {
                     .andExpect(status().isBadRequest()).andExpect(jsonPath("$.message").isString());
         }
         mvc.perform(post("/api/accounts/register").contentType(MediaType.APPLICATION_JSON).content("""
-                {"email":" DUPLICATE@EXAMPLE.COM ","password":"secret phrase","role":"APPLICANT"}
+                {"email":" DUPLICATE@EXAMPLE.COM ","password":"secret phrase","role":"APPLICANT","fullName":"Ann Lee"}
                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.message").value("An account with that email already exists."));
@@ -137,7 +145,7 @@ class RegistrationIntegrationTest {
                 .when(recruiters).saveAndFlush(any(Recruiter.class));
         String response = mvc.perform(post("/api/accounts/register").contentType(MediaType.APPLICATION_JSON).content("""
                 {"email":"hr@example.com","password":"never-echo-this","role":"RECRUITER",
-                 "companyName":"New Company","recruiterName":"Rhea"}
+                 "companyName":"New Company","fullName":"Rhea"}
                 """))
                 .andExpect(status().isConflict()).andExpect(jsonPath("$.message").isString())
                 .andReturn().getResponse().getContentAsString();

@@ -103,7 +103,7 @@ public class Application {
                 && applicant.getId().equals(this.applicant.getId());
     }
 
-    // 招聘者发出 Offer；身份及公司权限由 Service 检查。
+    // The recruiter extends an offer; identity and company permission are checked by the service.
     public void makeOffer() {
         makeOffer(LocalDateTime.now(), null);
     }

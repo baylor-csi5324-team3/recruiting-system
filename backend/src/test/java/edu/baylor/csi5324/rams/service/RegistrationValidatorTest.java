@@ -29,7 +29,7 @@ class RegistrationValidatorTest {
     }
 
     private RegisterAccountRequest applicant(String email, String password) {
-        return new RegisterAccountRequest(email, password, Role.APPLICANT, null, null);
+        return new RegisterAccountRequest(email, password, Role.APPLICANT, null, "Ann Lee");
     }
 
     @Test
@@ -63,8 +63,10 @@ class RegistrationValidatorTest {
     }
 
     @Test
-    void recruiterNameRequired() {
+    void fullNameRequiredForBothRoles() {
         for (String name : new String[]{null, "  "}) {
+            assertThrows(ValidationException.class, () -> validator.validate(
+                    new RegisterAccountRequest("person@example.com", "secret phrase", Role.APPLICANT, null, name)));
             assertThrows(ValidationException.class, () -> validator.validate(
                     new RegisterAccountRequest("hr@example.com", "secret phrase", Role.RECRUITER, "Baylor Tech", name)));
         }

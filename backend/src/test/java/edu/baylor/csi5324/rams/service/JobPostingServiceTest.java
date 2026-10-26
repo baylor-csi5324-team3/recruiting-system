@@ -57,7 +57,7 @@ class JobPostingServiceTest {
         recruiters.deleteAll();
         companies.deleteAll();
 
-        // 后面的创建 Company、Recruiter 的代码保持原样
+        // The Company and Recruiter set-up below is unchanged.
 
         Company company = companies.save(new Company("Baylor Tech"));
         Company other = companies.save(new Company("Other Corp"));

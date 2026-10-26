@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
-import type { Application, Interview, Job, Role, Stage } from './data';
+import type { Application, Job, Role, Stage } from './data';
 import { api, bodyJson, convertApplication, convertJob, toBackendStage, toBackendType,
   type Actor, type AccountRow, type BackendApplication, type BackendJob, type UserProfile } from '@/lib/recruiting-api';
 
@@ -11,7 +11,6 @@ function useRecruitingState() {
   const [selectedActorId, setSelectedActorId] = useState<number | null>(null);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
-  const [interviews, setInterviews] = useState<Interview[]>([]);
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
   const [saved, setSaved] = useState<number[]>([]);
   const [profile, setProfile] = useState<UserProfile>(blankProfile);
@@ -41,18 +40,16 @@ function useRecruitingState() {
       const jobsRequest = api<BackendJob[]>('/api/demo/jobs' + qs);
       const appsRequest = role === 'Applicant' && actor ? api<BackendApplication[]>(`/api/demo/applications?applicantId=${actor.id}`)
         : role === 'Recruiter' && actor ? api<BackendApplication[]>(`/api/demo/applications?recruiterId=${actor.id}`) : Promise.resolve([]);
-      const interviewsRequest = role === 'Applicant' && actor ? api<Interview[]>(`/api/demo/interviews?applicantId=${actor.id}`)
-        : role === 'Recruiter' && actor ? api<Interview[]>(`/api/demo/interviews?recruiterId=${actor.id}`) : Promise.resolve([]);
       const profileRequest = applicantId !== null ? api<UserProfile>(`/api/demo/profile/${applicantId}`) : Promise.resolve(blankProfile);
       const savedRequest = applicantId !== null ? api<number[]>(`/api/demo/saved/${applicantId}`) : Promise.resolve([]);
       const accountsRequest = role === 'Administrator' && actor ? api<AccountRow[]>(`/api/demo/accounts?administratorId=${actor.id}`) : Promise.resolve([]);
-      const [bj,ba,bi,p,sv,ac] = await Promise.all([jobsRequest,appsRequest,interviewsRequest,profileRequest,savedRequest,accountsRequest]);
+      const [bj,ba,p,sv,ac] = await Promise.all([jobsRequest,appsRequest,profileRequest,savedRequest,accountsRequest]);
       setJobs(bj.map(convertJob)); setApplications(ba.map(convertApplication));
-      setInterviews(bi); setProfile(p); setSaved(sv); setAccounts(ac);
+      setProfile(p); setSaved(sv); setAccounts(ac);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Failed to load backend data';
       setError(msg); toast.error(msg);
-      setJobs([]); setApplications([]); setInterviews([]); setAccounts([]); setSaved([]); setProfile(blankProfile);
+      setJobs([]); setApplications([]); setAccounts([]); setSaved([]); setProfile(blankProfile);
     } finally { setLoading(false); }
   };
   useEffect(() => { void refresh(); }, [actors, role, selectedActorId]);
@@ -152,14 +149,6 @@ function useRecruitingState() {
       }), 'Account updated'); return true;
     } catch (e) { toast.error(String(e)); return false; }
   };
-  const schedule = async (interview: Interview) => {
-    if (!actor || role !== 'Recruiter') return false;
-    try {
-      await after(() => api(`/api/demo/interviews?recruiterId=${actor.id}`, {
-        method:'PUT', ...bodyJson({...interview, id:interview.id > 0 ? interview.id : null})
-      }), 'Interview saved'); return true;
-    } catch (e) { toast.error(String(e)); return false; }
-  };
   const uploadProfileResume = async (file: File) => {
     if (role !== 'Applicant' || !actor) return false;
     if (file.size===0 || file.size>5*1024*1024 || !/\.(pdf|docx)$/i.test(file.name)) { toast.error('PDF or DOCX, maximum 5 MB'); return false; }
@@ -178,7 +167,7 @@ function useRecruitingState() {
     } catch (e) { toast.error(String(e)); return false; }
   };
   return { role, setRole, actor, actors, applicantId, recruiterId, administratorId,
-    selectActor, selectedActorId, jobs, saved, toggleSave, applications, submit, updateStage, interviews, schedule,
+    selectActor, selectedActorId, jobs, saved, toggleSave, applications, submit, updateStage,
     accounts, profile, setProfile, saveProfile, uploadProfileResume, saveJob, closeJob, updateAccount,
     audit, record, loading, error, refresh };
 }

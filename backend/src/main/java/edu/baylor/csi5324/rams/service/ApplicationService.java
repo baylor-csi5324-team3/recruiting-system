@@ -270,7 +270,7 @@ public class ApplicationService {
         return applications.saveAndFlush(application).getDetails();
     }
 
-    // 查询申请，同时校验账号状态和申请归属。
+    // Loads the application and checks the account status and that it belongs to the applicant.
     private Application findOwnedApplication(
             Long applicationId,
             Long applicantId) {

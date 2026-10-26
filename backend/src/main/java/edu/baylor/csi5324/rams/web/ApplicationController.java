@@ -6,6 +6,11 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import java.nio.charset.StandardCharsets;
+import java.util.Locale;
 import java.util.List;
 
 @RestController
@@ -71,6 +76,28 @@ public class ApplicationController {
                 recruiterId,
                 request.stage()
         );
+    }
+
+    /** Download the original resume snapshot for review by a recruiter from the same company. */
+    @GetMapping("/{applicationId}/resume")
+    public ResponseEntity<byte[]> downloadSubmittedResume(
+            @PathVariable Long applicationId,
+            @RequestHeader(RECRUITER_HEADER) Long recruiterId) {
+        ApplicationService.SubmittedResume resume =
+                applicationService.getSubmittedResumeForRecruiter(applicationId, recruiterId);
+        String filename = resume.filename()
+                .replace('\\', '_').replace('/', '_')
+                .replace('\r', '_').replace('\n', '_').replace('"', '_');
+        boolean pdf = filename.toLowerCase(Locale.ROOT).endsWith(".pdf");
+        MediaType type = pdf ? MediaType.APPLICATION_PDF
+                : MediaType.parseMediaType("application/vnd.openxmlformats-officedocument.wordprocessingml.document");
+        return ResponseEntity.ok()
+                .contentType(type)
+                .header(HttpHeaders.CONTENT_DISPOSITION,
+                        ContentDisposition.attachment()
+                                .filename(filename, StandardCharsets.UTF_8)
+                                .build().toString())
+                .body(resume.content());
     }
 
     @PostMapping("/{applicationId}/withdraw")

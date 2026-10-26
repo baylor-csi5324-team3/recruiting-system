@@ -103,6 +103,17 @@ public class JobPosting {
         return company.getId() != null && company.getId().equals(other.getId());
     }
 
+    public void updateDetails(PostingDetails d) {
+        if (status == PostingStatus.CLOSED) throw new IllegalStateException("Closed jobs cannot be edited.");
+        title = d.title().trim(); description = d.description().trim();
+        location = d.location().trim(); employmentType = d.employmentType().trim().toUpperCase();
+        closingDate = d.closingDate();
+    }
+    public void closePosting() {
+        if (status != PostingStatus.PUBLISHED) throw new IllegalStateException("Only published jobs can be closed.");
+        status = PostingStatus.CLOSED;
+    }
+
     public Long getId() {
         return id;
     }

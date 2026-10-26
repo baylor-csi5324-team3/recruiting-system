@@ -109,6 +109,34 @@ public class ApplicationService {
         return applicant;
     }
 
+    /** Submitted resume snapshot, available to an active recruiter from the job's company. */
+    public record SubmittedResume(String filename, byte[] content) {}
+
+    @Transactional(readOnly = true)
+    public SubmittedResume getSubmittedResumeForRecruiter(Long applicationId, Long recruiterId) {
+        Recruiter recruiter = recruiters.findById(recruiterId)
+                .orElseThrow(() -> new NotFoundException("Recruiter not found."));
+        UserAccount account = recruiter.getAccount();
+        if (account == null || account.getRole() != Role.RECRUITER
+                || account.getStatus() != AccountStatus.ACTIVE) {
+            throw new ValidationException("An active recruiter account is required.");
+        }
+        Application application = applications.findById(applicationId)
+                .orElseThrow(() -> new NotFoundException("Application not found."));
+        if (recruiter.getCompany() == null
+                || !application.getJobPosting().belongsTo(recruiter.getCompany())) {
+            throw new ValidationException("The application belongs to another company.");
+        }
+        byte[] content = application.getSubmittedResume();
+        if (content == null || content.length == 0) {
+            throw new NotFoundException("This application has no submitted resume file.");
+        }
+        String filename = application.getResumeFilename();
+        return new SubmittedResume(
+                filename == null || filename.isBlank() ? "resume" : filename,
+                content);
+    }
+
     // Track application stage
     // Retrieve all applications belonging to the applicant
     @Transactional(readOnly = true)

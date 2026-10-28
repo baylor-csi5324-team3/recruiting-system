@@ -32,16 +32,10 @@ class SubmitApplicationIntegrationTest {
 
     @Test
     void submitPersistsRecordAndHistoryReadsSameApplication() {
-        UserAccount account = accounts.save(new UserAccount(
-                "submit-integration@example.com", encoder.encode("Applicant test password"),
-                Role.APPLICANT, AccountStatus.ACTIVE));
-        Applicant applicant = applicants.save(new Applicant("Integration Applicant", account));
+        Applicant applicant = applicants.save(new Applicant("submit-integration@example.com", encoder.encode("Applicant test password"), "Integration Applicant", AccountStatus.ACTIVE));
         Resume resume = resumes.save(new Resume(applicant, "resume.pdf", new byte[] {1, 2, 3}));
         Company company = companies.save(new Company("Integration Co"));
-        UserAccount recruiterAccount = accounts.save(new UserAccount(
-                "submit-integration-recruiter@example.com", encoder.encode("Recruiter test password"),
-                Role.RECRUITER, AccountStatus.ACTIVE));
-        Recruiter recruiter = recruiters.save(new Recruiter("Integration Recruiter", recruiterAccount, company));
+        Recruiter recruiter = recruiters.save(new Recruiter("submit-integration-recruiter@example.com", encoder.encode("Recruiter test password"), "Integration Recruiter", company, AccountStatus.ACTIVE));
         JobPosting job = new JobPosting(new PostingDetails("Integration Job", "Integration description",
                 "Waco, TX", "FULL_TIME", LocalDate.now().plusYears(2)),
                 recruiter, LocalDateTime.now());

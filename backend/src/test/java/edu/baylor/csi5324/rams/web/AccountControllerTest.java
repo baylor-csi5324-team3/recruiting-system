@@ -2,6 +2,7 @@ package edu.baylor.csi5324.rams.web;
 
 import edu.baylor.csi5324.rams.domain.AccountStatus;
 import edu.baylor.csi5324.rams.domain.Administrator;
+import edu.baylor.csi5324.rams.domain.Applicant;
 import edu.baylor.csi5324.rams.domain.Role;
 import edu.baylor.csi5324.rams.domain.UserAccount;
 import edu.baylor.csi5324.rams.repository.AdministratorRepository;
@@ -36,8 +37,7 @@ class AccountControllerTest {
     @MockitoBean AccountService accountService;
     @MockitoBean AdministratorRepository administrators;
 
-    private final UserAccount adminAccount = new UserAccount("admin@example.com", Role.ADMINISTRATOR, AccountStatus.ACTIVE);
-    private final Administrator admin = new Administrator("Ada", adminAccount);
+    private final Administrator admin = new Administrator("admin@example.com", "hash", "Ada", AccountStatus.ACTIVE);
 
     @BeforeEach
     void administratorExists() {
@@ -57,7 +57,7 @@ class AccountControllerTest {
     @DisplayName("GET /api/accounts/lookup reports the current role and status (step 4)")
     void reportsRoleAndStatus() throws Exception {
         when(accountService.findAccount("applicant@example.com"))
-                .thenReturn(new UserAccount("applicant@example.com", Role.APPLICANT, AccountStatus.ACTIVE));
+                .thenReturn(new Applicant("applicant@example.com", "hash", "Ann", AccountStatus.ACTIVE));
 
         mockMvc.perform(get("/api/accounts/lookup").param("email", "applicant@example.com").header(AccountController.ADMIN_HEADER, "1"))
                 .andExpect(status().isOk())
@@ -79,20 +79,20 @@ class AccountControllerTest {
     @Test
     @DisplayName("PUT /api/accounts/{id}/role-status applies the change and reports the new role and status (steps 5 to 8)")
     void appliesChange() throws Exception {
-        UserAccount updated = new UserAccount("applicant@example.com", Role.RECRUITER, AccountStatus.ACTIVE);
-        when(accountService.applyChange(eq(3L), eq(Role.RECRUITER), isNull(), eq(admin))).thenReturn(updated);
+        UserAccount updated = new Administrator("applicant@example.com", "hash", "Ann", AccountStatus.ACTIVE);
+        when(accountService.applyChange(eq(3L), eq(Role.ADMINISTRATOR), isNull(), isNull(), eq(admin))).thenReturn(updated);
 
         mockMvc.perform(put("/api/accounts/3/role-status").header(AccountController.ADMIN_HEADER, "1")
-                        .contentType(MediaType.APPLICATION_JSON).content("{\"newRole\": \"RECRUITER\"}"))
+                        .contentType(MediaType.APPLICATION_JSON).content("{\"newRole\": \"ADMINISTRATOR\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.role").value("RECRUITER"))
+                .andExpect(jsonPath("$.role").value("ADMINISTRATOR"))
                 .andExpect(jsonPath("$.status").value("ACTIVE"));
     }
 
     @Test
     @DisplayName("a rejected change is reported as 400 and the current role is kept (extensions 6a and 6b)")
     void rejectedChangeReported() throws Exception {
-        when(accountService.applyChange(eq(3L), any(), any(), eq(admin)))
+        when(accountService.applyChange(eq(3L), any(), any(), any(), eq(admin)))
                 .thenThrow(new ValidationException("The change would leave the system without an active administrator."));
 
         mockMvc.perform(put("/api/accounts/3/role-status").header(AccountController.ADMIN_HEADER, "1")

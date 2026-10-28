@@ -47,8 +47,8 @@ class JobCsvLoaderIntegrationTest {
         recruiters.deleteAll();
         accounts.deleteAll();
         companies.deleteAll();
-        var account = accounts.save(new UserAccount("recruiter@example.com", encoder.encode("CSV fixture secret"), Role.RECRUITER, AccountStatus.ACTIVE));
-        recruiter = recruiters.save(new Recruiter("Rhea", account, companies.save(new Company("Baylor Tech"))));
+        recruiter = recruiters.save(new Recruiter("recruiter@example.com", encoder.encode("CSV fixture secret"), "Rhea",
+                companies.save(new Company("Baylor Tech")), AccountStatus.ACTIVE));
     }
 
     private ByteArrayResource csv(String content) { return new ByteArrayResource(content.getBytes(StandardCharsets.UTF_8)); }

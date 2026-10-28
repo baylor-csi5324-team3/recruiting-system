@@ -51,14 +51,12 @@ class ApplicationWithdrawalServiceTest {
     }
 
     private Applicant activeApplicant() {
-        UserAccount account = mock(UserAccount.class);
         Applicant applicant = mock(Applicant.class);
 
         when(applicants.findById(1L))
                 .thenReturn(Optional.of(applicant));
-        when(applicant.getAccount()).thenReturn(account);
-        when(account.getRole()).thenReturn(Role.APPLICANT);
-        when(account.getStatus()).thenReturn(AccountStatus.ACTIVE);
+        when(applicant.getRole()).thenReturn(Role.APPLICANT);
+        when(applicant.getStatus()).thenReturn(AccountStatus.ACTIVE);
 
         return applicant;
     }
@@ -68,9 +66,8 @@ class ApplicationWithdrawalServiceTest {
         Application application =
                 new Application(applicant, job, SUBMITTED_AT);
 
-        // Different IDs verify that history uses UserAccount ID.
+        // The applicant is the account, so the history records the applicant's id.
         when(applicant.getId()).thenReturn(1L);
-        when(applicant.getAccount().getId()).thenReturn(101L);
         when(applications.findById(10L))
                 .thenReturn(Optional.of(application));
 
@@ -106,7 +103,7 @@ class ApplicationWithdrawalServiceTest {
         StageRecord latest = history.get(history.size() - 1);
         assertEquals(ApplicationStage.WITHDRAWN, latest.getStage());
         assertEquals(LocalDateTime.now(CLOCK), latest.getChangedAt());
-        assertEquals(Long.valueOf(101L), latest.getChangedByUserId());
+        assertEquals(Long.valueOf(1L), latest.getChangedByUserId());
 
         verify(applications).saveAndFlush(application);
     }
@@ -131,14 +128,12 @@ class ApplicationWithdrawalServiceTest {
 
     @Test
     void rejectsInactiveApplicantBeforeLookingUpApplication() {
-        UserAccount account = mock(UserAccount.class);
         Applicant applicant = mock(Applicant.class);
 
         when(applicants.findById(1L))
                 .thenReturn(Optional.of(applicant));
-        when(applicant.getAccount()).thenReturn(account);
-        when(account.getRole()).thenReturn(Role.APPLICANT);
-        when(account.getStatus()).thenReturn(AccountStatus.DEACTIVATED);
+        when(applicant.getRole()).thenReturn(Role.APPLICANT);
+        when(applicant.getStatus()).thenReturn(AccountStatus.DEACTIVATED);
 
         assertThrows(
                 ValidationException.class,

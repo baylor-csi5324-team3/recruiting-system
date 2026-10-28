@@ -40,16 +40,14 @@ class ApplicationTrackingServiceTest {
 
         // Create a mock applicant and account.
         Applicant applicant = mock(Applicant.class);
-        UserAccount account = mock(UserAccount.class);
 
         // Simulate finding applicant ID 1.
         when(applicants.findById(1L))
                 .thenReturn(Optional.of(applicant));
 
         // Simulate an active applicant account.
-        when(applicant.getAccount()).thenReturn(account);
-        when(account.getRole()).thenReturn(Role.APPLICANT);
-        when(account.getStatus()).thenReturn(AccountStatus.ACTIVE);
+        when(applicant.getRole()).thenReturn(Role.APPLICANT);
+        when(applicant.getStatus()).thenReturn(AccountStatus.ACTIVE);
 
         // Simulate no applications in the database.
         when(applications.findByApplicantId(1L))
@@ -72,15 +70,13 @@ class ApplicationTrackingServiceTest {
 
         // Create a mock applicant and account.
         Applicant applicant = mock(Applicant.class);
-        UserAccount account = mock(UserAccount.class);
 
         // Simulate an active applicant with ID 1.
         when(applicants.findById(1L))
                 .thenReturn(Optional.of(applicant));
 
-        when(applicant.getAccount()).thenReturn(account);
-        when(account.getRole()).thenReturn(Role.APPLICANT);
-        when(account.getStatus()).thenReturn(AccountStatus.ACTIVE);
+        when(applicant.getRole()).thenReturn(Role.APPLICANT);
+        when(applicant.getStatus()).thenReturn(AccountStatus.ACTIVE);
 
         // Create two mock applications.
         Application application1 = mock(Application.class);
@@ -126,15 +122,13 @@ class ApplicationTrackingServiceTest {
 
         // Create a mock applicant and account.
         Applicant applicant = mock(Applicant.class);
-        UserAccount account = mock(UserAccount.class);
 
         // Simulate an active applicant with ID 1.
         when(applicants.findById(1L))
                 .thenReturn(Optional.of(applicant));
 
-        when(applicant.getAccount()).thenReturn(account);
-        when(account.getRole()).thenReturn(Role.APPLICANT);
-        when(account.getStatus()).thenReturn(AccountStatus.ACTIVE);
+        when(applicant.getRole()).thenReturn(Role.APPLICANT);
+        when(applicant.getStatus()).thenReturn(AccountStatus.ACTIVE);
 
         // Create a mock application.
         Application application = mock(Application.class);
@@ -175,15 +169,13 @@ class ApplicationTrackingServiceTest {
 
         // Create a mock applicant and account.
         Applicant applicant = mock(Applicant.class);
-        UserAccount account = mock(UserAccount.class);
 
         // Simulate an active applicant with ID 1.
         when(applicants.findById(1L))
                 .thenReturn(Optional.of(applicant));
 
-        when(applicant.getAccount()).thenReturn(account);
-        when(account.getRole()).thenReturn(Role.APPLICANT);
-        when(account.getStatus()).thenReturn(AccountStatus.ACTIVE);
+        when(applicant.getRole()).thenReturn(Role.APPLICANT);
+        when(applicant.getStatus()).thenReturn(AccountStatus.ACTIVE);
 
         // Create an application belonging to another applicant.
         Application application = mock(Application.class);
@@ -216,17 +208,15 @@ class ApplicationTrackingServiceTest {
 
         // Create a mock applicant and account.
         Applicant applicant = mock(Applicant.class);
-        UserAccount account = mock(UserAccount.class);
 
         // Simulate finding applicant ID 1.
         when(applicants.findById(1L))
                 .thenReturn(Optional.of(applicant));
 
-        when(applicant.getAccount()).thenReturn(account);
 
         // Simulate an applicant whose account is deactivated.
-        when(account.getRole()).thenReturn(Role.APPLICANT);
-        when(account.getStatus()).thenReturn(AccountStatus.DEACTIVATED);
+        when(applicant.getRole()).thenReturn(Role.APPLICANT);
+        when(applicant.getStatus()).thenReturn(AccountStatus.DEACTIVATED);
 
         // Verify the service rejects the inactive applicant.
         ValidationException exception = assertThrows(

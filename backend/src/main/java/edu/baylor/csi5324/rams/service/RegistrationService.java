@@ -7,9 +7,7 @@ import edu.baylor.csi5324.rams.domain.Recruiter;
 import edu.baylor.csi5324.rams.domain.RegisterAccountRequest;
 import edu.baylor.csi5324.rams.domain.Role;
 import edu.baylor.csi5324.rams.domain.UserAccount;
-import edu.baylor.csi5324.rams.repository.ApplicantRepository;
 import edu.baylor.csi5324.rams.repository.CompanyRepository;
-import edu.baylor.csi5324.rams.repository.RecruiterRepository;
 import edu.baylor.csi5324.rams.repository.UserAccountRepository;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -19,18 +17,13 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class RegistrationService {
     private final UserAccountRepository accounts;
-    private final ApplicantRepository applicants;
-    private final RecruiterRepository recruiters;
     private final CompanyRepository companies;
     private final PasswordEncoder passwordEncoder;
     private final RegistrationValidator validator;
 
-    public RegistrationService(UserAccountRepository accounts, ApplicantRepository applicants,
-                               RecruiterRepository recruiters, CompanyRepository companies,
+    public RegistrationService(UserAccountRepository accounts, CompanyRepository companies,
                                PasswordEncoder passwordEncoder, RegistrationValidator validator) {
         this.accounts = accounts;
-        this.applicants = applicants;
-        this.recruiters = recruiters;
         this.companies = companies;
         this.passwordEncoder = passwordEncoder;
         this.validator = validator;
@@ -48,13 +41,10 @@ public class RegistrationService {
             company = companies.findByNameIgnoreCase(request.companyName())
                     .orElseGet(() -> companies.saveAndFlush(new Company(request.companyName())));
         }
-        UserAccount account = accounts.saveAndFlush(
-                new UserAccount(request.email(), hash, request.role(), AccountStatus.ACTIVE));
-        if (request.role() == Role.RECRUITER) {
-            recruiters.saveAndFlush(new Recruiter(request.fullName(), account, company));
-        } else {
-            applicants.saveAndFlush(new Applicant(request.fullName(), account));
-        }
-        return account;
+        // The role is the subclass: one object, saved once, holds the account and the role (SD 6.2 messages 4.6, 4.7).
+        UserAccount account = request.role() == Role.RECRUITER
+                ? new Recruiter(request.email(), hash, request.fullName(), company, AccountStatus.ACTIVE)
+                : new Applicant(request.email(), hash, request.fullName(), AccountStatus.ACTIVE);
+        return accounts.saveAndFlush(account);
     }
 }

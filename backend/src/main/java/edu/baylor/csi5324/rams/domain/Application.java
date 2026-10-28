@@ -68,10 +68,7 @@ public class Application {
         this.jobPosting = jobPosting;
         this.submitDate = submitDate;
         this.stage = ApplicationStage.SUBMITTED;
-        Long submittedByUserId =
-                applicant != null && applicant.getAccount() != null
-                        ? applicant.getAccount().getId()
-                        : null;
+        Long submittedByUserId = applicant != null ? applicant.getId() : null;
 
         appendStageRecord(
                 ApplicationStage.SUBMITTED,

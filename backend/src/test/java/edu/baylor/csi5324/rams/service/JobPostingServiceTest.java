@@ -61,14 +61,10 @@ class JobPostingServiceTest {
 
         Company company = companies.save(new Company("Baylor Tech"));
         Company other = companies.save(new Company("Other Corp"));
-        var rhea = accounts.findByEmailIgnoreCase("job-tests.rhea@example.com").orElseGet(() -> accounts.save(
-                new edu.baylor.csi5324.rams.domain.UserAccount("job-tests.rhea@example.com", encoder.encode("Job fixture secret"),
-                        edu.baylor.csi5324.rams.domain.Role.RECRUITER, edu.baylor.csi5324.rams.domain.AccountStatus.ACTIVE)));
-        var omar = accounts.findByEmailIgnoreCase("job-tests.omar@example.com").orElseGet(() -> accounts.save(
-                new edu.baylor.csi5324.rams.domain.UserAccount("job-tests.omar@example.com", encoder.encode("Job fixture secret"),
-                        edu.baylor.csi5324.rams.domain.Role.RECRUITER, edu.baylor.csi5324.rams.domain.AccountStatus.ACTIVE)));
-        recruiter = recruiters.save(new Recruiter("Rhea", rhea, company));
-        otherRecruiter = recruiters.save(new Recruiter("Omar", omar, other));
+        recruiter = recruiters.save(new Recruiter("job-tests.rhea@example.com", encoder.encode("Job fixture secret"), "Rhea",
+                company, edu.baylor.csi5324.rams.domain.AccountStatus.ACTIVE));
+        otherRecruiter = recruiters.save(new Recruiter("job-tests.omar@example.com", encoder.encode("Job fixture secret"), "Omar",
+                other, edu.baylor.csi5324.rams.domain.AccountStatus.ACTIVE));
     }
 
     private JobPosting publishedPosting(String title, String location, String type, LocalDate closing, LocalDateTime postedAt) {

@@ -7,17 +7,14 @@ import edu.baylor.csi5324.rams.domain.Application;
 import edu.baylor.csi5324.rams.domain.Company;
 import edu.baylor.csi5324.rams.domain.JobPosting;
 import edu.baylor.csi5324.rams.domain.Recruiter;
-import edu.baylor.csi5324.rams.domain.Role;
 import edu.baylor.csi5324.rams.domain.UserAccount;
-import edu.baylor.csi5324.rams.repository.AdministratorRepository;
-import edu.baylor.csi5324.rams.repository.ApplicantRepository;
 import edu.baylor.csi5324.rams.repository.ApplicationRepository;
 import edu.baylor.csi5324.rams.repository.CompanyRepository;
 import edu.baylor.csi5324.rams.repository.JobPostingRepository;
-import edu.baylor.csi5324.rams.repository.RecruiterRepository;
 import edu.baylor.csi5324.rams.repository.UserAccountRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.CommandLineRunner;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -25,11 +22,11 @@ import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
-import edu.baylor.csi5324.rams.domain.ApplicationStage;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.UUID;
+import java.util.function.Function;
 
 /** Seeds actors, CSV jobs, and sample offers in dependency order within one transaction. */
 @Configuration
@@ -40,50 +37,61 @@ public class DevDataSeeder {
     @Bean
     CommandLineRunner seedDevelopmentData(
             CompanyRepository companies,
-            RecruiterRepository recruiters,
-            AdministratorRepository administrators,
             UserAccountRepository accounts,
             JobPostingRepository postings,
-            ApplicantRepository applicants,
             ApplicationRepository applications,
             Clock clock,
             PasswordEncoder encoder,
             JobCsvLoader loader,
-            PlatformTransactionManager transactions) {
+            PlatformTransactionManager transactions,
+            @Value("${rams.seed.demo-password:}") String demoPassword) {
         return args -> new TransactionTemplate(transactions).executeWithoutResult(transaction -> {
-            UserAccount adminAccount = account(accounts, encoder, "admin@example.com", Role.ADMINISTRATOR, AccountStatus.ACTIVE);
-            Administrator admin = administrators.findAll().stream()
-                    .filter(candidate -> candidate.getAccount() != null && adminAccount.getId().equals(candidate.getAccount().getId()))
-                    .findFirst().orElseGet(() -> administrators.save(new Administrator("Ada Admin", adminAccount)));
-            UserAccount recruiterAccount = account(accounts, encoder, "recruiter@example.com", Role.RECRUITER, AccountStatus.ACTIVE);
-            Recruiter recruiter = recruiters.findByAccountId(recruiterAccount.getId()).orElseGet(() -> {
+            Administrator admin = account(accounts, Administrator.class, "admin@example.com", email ->
+                    new Administrator(email, secret(encoder, demoPassword), "Ada Admin", AccountStatus.ACTIVE));
+            Recruiter recruiter = account(accounts, Recruiter.class, "recruiter@example.com", email -> {
                 Company company = companies.findByNameIgnoreCase("Baylor Tech")
                         .orElseGet(() -> companies.save(new Company("Baylor Tech")));
-                return recruiters.save(new Recruiter("Rhea Recruiter", recruiterAccount, company));
+                return new Recruiter(email, secret(encoder, demoPassword), "Rhea Recruiter", company, AccountStatus.ACTIVE);
             });
-            UserAccount applicantAccount = account(accounts, encoder, "applicant@example.com", Role.APPLICANT, AccountStatus.ACTIVE);
-            Applicant applicant = applicants.findAll().stream()
-                    .filter(candidate -> applicantAccount.getId().equals(candidate.getAccount().getId()))
-                    .findFirst().orElseGet(() -> applicants.save(new Applicant("Peter Chen", "254-555-0100", applicantAccount)));
-            account(accounts, encoder, "dormant@example.com", Role.APPLICANT, AccountStatus.DEACTIVATED);
+            Applicant applicant = account(accounts, Applicant.class, "applicant@example.com", email ->
+                    new Applicant(email, secret(encoder, demoPassword), "Peter Chen", "254-555-0100", AccountStatus.ACTIVE));
+            account(accounts, Applicant.class, "dormant@example.com", email ->
+                    new Applicant(email, secret(encoder, demoPassword), "Dana Dormant", AccountStatus.DEACTIVATED));
 
             int imported = loader.loadIfEmpty();
             List<JobPosting> jobs = postings.findAll();
             LocalDateTime now = LocalDateTime.now(clock);
-            seedOffer(applications, applicant, recruiter, jobs, "Backend Developer", now);
-            seedOffer(applications, applicant, recruiter, jobs, "Software Engineering Intern", now);
+            if (applicant != null && recruiter != null) {
+                seedOffer(applications, applicant, recruiter, jobs, "Backend Developer", now);
+                seedOffer(applications, applicant, recruiter, jobs, "Software Engineering Intern", now);
+            }
 
-            log.info("Development data ready: administrator id {}, recruiter id {}, {} CSV postings imported",
-                    admin.getId(), recruiter.getId(), imported);
+            log.info("Development data ready: administrator id {}, recruiter id {}, applicant id {}, {} CSV postings imported",
+                    admin == null ? null : admin.getId(), recruiter == null ? null : recruiter.getId(),
+                    applicant == null ? null : applicant.getId(), imported);
         });
     }
 
-    private UserAccount account(UserAccountRepository accounts, PasswordEncoder encoder, String email,
-                                Role role, AccountStatus status) {
-        // Newly seeded accounts have random, discarded secrets, not shared default credentials.
-        // Existing accounts and their credentials/roles/statuses are never overwritten.
-        return accounts.findByEmailIgnoreCase(email).orElseGet(() -> accounts.save(new UserAccount(
-                email, encoder.encode(UUID.randomUUID().toString()), role, status)));
+    /**
+     * Creates a sample account of the given role unless the email is already used. Existing accounts and their
+     * credentials, roles and statuses are never overwritten; one whose role was changed is left out of the sample data.
+     */
+    private <T extends UserAccount> T account(UserAccountRepository accounts, Class<T> role, String email,
+                                              Function<String, T> create) {
+        UserAccount existing = accounts.findByEmailIgnoreCase(email).orElse(null);
+        if (existing == null) {
+            return accounts.save(create.apply(email));
+        }
+        if (!role.isInstance(existing)) {
+            log.warn("Sample account {} now has role {}; it is not used for the sample data", email, existing.getRole());
+            return null;
+        }
+        return role.cast(existing);
+    }
+
+    /** The development demo password (rams.seed.demo-password), or a random, discarded secret without it. */
+    private String secret(PasswordEncoder encoder, String demoPassword) {
+        return encoder.encode(demoPassword.isBlank() ? UUID.randomUUID().toString() : demoPassword);
     }
 
     private void seedOffer(ApplicationRepository applications, Applicant applicant, Recruiter recruiter,
@@ -105,8 +113,8 @@ public class DevDataSeeder {
             return;
         }
         Application application = new Application(applicant, job, now);
-        application.startReview(now, recruiter.getAccount().getId());
-        application.makeOffer(now, recruiter.getAccount().getId());
+        application.startReview(now, recruiter.getId());
+        application.makeOffer(now, recruiter.getId());
         applications.save(application);
         log.info("Offer test data: applicantId={}, applicationId={}, jobPostingId={}",
                 applicant.getId(), application.getId(), job.getId());

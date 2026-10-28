@@ -9,4 +9,6 @@ import java.util.List;
 public interface JobPostingRepository extends JpaRepository<JobPosting, Long> {
 
     List<JobPosting> findByStatus(PostingStatus status);
+
+    boolean existsByRecruiterId(Long recruiterId);
 }

@@ -26,10 +26,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 @ActiveProfiles("test")
 class RegistrationIntegrationTest {
     @Autowired RegistrationService service;
-    @Autowired UserAccountRepository accounts;
+    @MockitoSpyBean UserAccountRepository accounts;
     @Autowired ApplicantRepository applicants;
     @Autowired CompanyRepository companies;
-    @MockitoSpyBean RecruiterRepository recruiters;
+    @Autowired RecruiterRepository recruiters;
     @Autowired PasswordEncoder encoder;
     @Autowired MockMvc mvc;
     private static final String SECRET = "Registration secret 2026";
@@ -57,7 +57,7 @@ class RegistrationIntegrationTest {
         assertTrue(encoder.matches(SECRET, saved.getPasswordHash()));
         assertFalse(encoder.matches("wrong", saved.getPasswordHash()));
         Applicant applicant = applicants.findAll().getFirst();
-        assertEquals(account.getId(), applicant.getAccount().getId());
+        assertEquals(account.getId(), applicant.getId());
         assertEquals("Rhea Lee", applicant.getName());
         assertEquals(1, applicants.count());
         assertEquals(0, companies.count());
@@ -67,8 +67,8 @@ class RegistrationIntegrationTest {
     @Test
     void recruiterCreatesCompanyAndBothRelationships() {
         UserAccount account = service.register(request("hr@example.com", Role.RECRUITER, " Baylor Tech "));
-        Recruiter recruiter = recruiters.findByAccountId(account.getId()).orElseThrow();
-        assertEquals(account.getId(), recruiter.getAccount().getId());
+        Recruiter recruiter = recruiters.findById(account.getId()).orElseThrow();
+        assertEquals(account.getId(), recruiter.getId());
         assertEquals("Rhea Lee", recruiter.getName());
         assertEquals("Baylor Tech", recruiter.getCompany().getName());
         assertEquals(1, accounts.count());
@@ -80,7 +80,7 @@ class RegistrationIntegrationTest {
     void recruitersReuseCompanyIgnoringCaseAndSurroundingSpace() {
         Company company = companies.saveAndFlush(new Company("Baylor Tech"));
         UserAccount first = service.register(request("first@example.com", Role.RECRUITER, " baylor TECH "));
-        assertEquals(company.getId(), recruiters.findByAccountId(first.getId()).orElseThrow().getCompany().getId());
+        assertEquals(company.getId(), recruiters.findById(first.getId()).orElseThrow().getCompany().getId());
         assertEquals(1, companies.count());
         assertEquals("Baylor Tech", companies.findById(company.getId()).orElseThrow().getName());
     }
@@ -142,7 +142,7 @@ class RegistrationIntegrationTest {
     @Test
     void databaseConflictIsSafeHttp409AndRollsBack() throws Exception {
         doThrow(new DataIntegrityViolationException("private database values must not escape"))
-                .when(recruiters).saveAndFlush(any(Recruiter.class));
+                .when(accounts).saveAndFlush(any(Recruiter.class));
         String response = mvc.perform(post("/api/accounts/register").contentType(MediaType.APPLICATION_JSON).content("""
                 {"email":"hr@example.com","password":"never-echo-this","role":"RECRUITER",
                  "companyName":"New Company","fullName":"Rhea"}

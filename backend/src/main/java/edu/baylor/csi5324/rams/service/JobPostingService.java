@@ -35,10 +35,10 @@ public class JobPostingService {
     @Transactional(readOnly = true)
     public List<JobPosting> findOpenPostings(SearchCriteria criteria) {
         LocalDate today = LocalDate.now(clock);
-        List<JobPosting> matches = jobPostings.findByStatus(PostingStatus.PUBLISHED).stream()
-                .filter(posting -> posting.isOpenAndMatches(criteria, today))   // 2.2.1
+        List<JobPosting> matches = jobPostings.findByStatus(PostingStatus.PUBLISHED).stream()        // 2.2.1
+                .filter(posting -> posting.isOpenAndMatches(criteria, today))   // 2.2.2
                 .toList();
-        return sortByPostedDate(matches);                                        // 2.2.2
+        return sortByPostedDate(matches);                                        // 2.2.3
     }
 
     private List<JobPosting> sortByPostedDate(List<JobPosting> matches) {
@@ -50,7 +50,7 @@ public class JobPostingService {
     /** SD 2.2: saves the posting as a draft, recording the recruiter and the creation time. */
     public JobPosting createDraft(PostingDetails details, Recruiter recruiter) {
         JobPosting draft = new JobPosting(details, recruiter, LocalDateTime.now(clock));   // 2.2.1 «create»
-        return jobPostings.save(draft);
+        return jobPostings.save(draft);                                                   // 2.2.2
     }
 
     public JobPosting updateDetails(Long postingId, PostingDetails details, Recruiter recruiter) {
@@ -73,11 +73,11 @@ public class JobPostingService {
         return jobPostings.save(posting);
     }
 
-    /** SD 3.1: records the draft as published with the recruiter and the publication time. */
+    /** SD 3.1: loads the draft (3.1.1), checks the company (3.1.2), marks it published (3.1.3) and saves it (3.1.4). */
     public JobPosting publish(Long postingId, Recruiter recruiter) {
-        JobPosting posting = jobPostings.findById(postingId)
+        JobPosting posting = jobPostings.findById(postingId)                       // 3.1.1
                 .orElseThrow(() -> new NotFoundException("No posting with id " + postingId + "."));
-        if (!posting.belongsTo(recruiter.getCompany())) {
+        if (!posting.belongsTo(recruiter.getCompany())) {                          // 3.1.2
             throw new ValidationException("The posting belongs to another company.");
         }
         if (posting.getStatus() != PostingStatus.DRAFT) {
@@ -86,7 +86,7 @@ public class JobPostingService {
         if (!posting.getClosingDate().isAfter(LocalDate.now(clock))) {      // extension 6a
             throw new ValidationException("The closing date has passed while the posting was a draft. Provide a new closing date.");
         }
-        posting.markPublished(recruiter, LocalDateTime.now(clock));          // 3.1.1
-        return jobPostings.save(posting);
+        posting.markPublished(recruiter, LocalDateTime.now(clock));          // 3.1.3
+        return jobPostings.save(posting);                                        // 3.1.4
     }
 }

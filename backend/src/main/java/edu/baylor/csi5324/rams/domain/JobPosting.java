@@ -58,7 +58,7 @@ public class JobPosting {
     protected JobPosting() {
     }
 
-    /** «create» JobPosting(details, recruiter): a new draft owned by the recruiter's company. */
+    /** «create» JobPosting(details, recruiter, createdAt), SD message 2.2.1 of Create and Publish a Job Posting: a new draft owned by the recruiter's company. */
     public JobPosting(PostingDetails details, Recruiter recruiter, LocalDateTime createdAt) {
         this.title = details.title().trim();
         this.description = details.description().trim();
@@ -71,7 +71,7 @@ public class JobPosting {
         this.status = PostingStatus.DRAFT;
     }
 
-    /** SD message 2.2.1 of Search Available Jobs: open on the given day and matching every criterion. */
+    /** SD message 2.2.2 of Search Available Jobs: open on the given day and matching every criterion. */
     public boolean isOpenAndMatches(SearchCriteria criteria, LocalDate today) {
         if (status != PostingStatus.PUBLISHED || closingDate.isBefore(today)) {
             return false;
@@ -92,13 +92,14 @@ public class JobPosting {
         return new PostingSummary(id, title, company.getName(), location, employmentType, closingDate);
     }
 
-    /** SD message 3.1.1 of Create and Publish a Job Posting. */
+    /** SD message 3.1.3 of Create and Publish a Job Posting. */
     public void markPublished(Recruiter recruiter, LocalDateTime postedDate) {
         this.recruiter = recruiter;
         this.postedDate = postedDate;
         this.status = PostingStatus.PUBLISHED;
     }
 
+    /** SD message 3.1.2 of Create and Publish a Job Posting: the posting belongs to the given company. */
     public boolean belongsTo(Company other) {
         return company.getId() != null && company.getId().equals(other.getId());
     }

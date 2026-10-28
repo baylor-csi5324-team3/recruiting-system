@@ -72,7 +72,7 @@ public class UserAccount {
         return new RoleAndStatus(role, status);
     }
 
-    /** SD message 3.1.2: applies the change and records who made it and when. */
+    /** SD message 3.1.3: applies the change and records who made it and when. */
     public void updateRoleAndStatus(Role newRole, AccountStatus newStatus, Administrator admin, LocalDateTime time) {
         if (newRole != null) {
             this.role = newRole;
@@ -84,6 +84,7 @@ public class UserAccount {
         this.lastChangedAt = time;
     }
 
+    /** SD message 3.1.2.1: an active administrator account (asked before the administrator count). */
     @JsonIgnore
     public boolean isActiveAdministrator() {
         return role == Role.ADMINISTRATOR && status == AccountStatus.ACTIVE;

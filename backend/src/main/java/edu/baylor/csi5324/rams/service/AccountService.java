@@ -30,7 +30,7 @@ public class AccountService {
     /** SD 2.1: the account identified by its email address (extension 3a when none matches). */
     @Transactional(readOnly = true)
     public UserAccount findAccount(String email) {
-        return accounts.findByEmailIgnoreCase(email == null ? "" : email.trim())
+        return accounts.findByEmailIgnoreCase(email == null ? "" : email.trim())          // 2.1.1
                 .orElseThrow(() -> new NotFoundException("No account matches " + email + "."));
     }
 
@@ -39,11 +39,11 @@ public class AccountService {
      * A null role or status means "keep the current value".
      */
     public UserAccount applyChange(Long accountId, Role newRole, AccountStatus newStatus, Administrator admin) {
-        UserAccount account = accounts.findById(accountId)
+        UserAccount account = accounts.findById(accountId)                           // 3.1.1
                 .orElseThrow(() -> new NotFoundException("No account with id " + accountId + "."));
-        validateChange(newRole, newStatus, account);                                   // 3.1.1
-        account.updateRoleAndStatus(newRole, newStatus, admin, LocalDateTime.now(clock)); // 3.1.2
-        return accounts.save(account);
+        validateChange(newRole, newStatus, account);                                   // 3.1.2
+        account.updateRoleAndStatus(newRole, newStatus, admin, LocalDateTime.now(clock)); // 3.1.3
+        return accounts.save(account);                                                 // 3.1.4
     }
 
     private void validateChange(Role newRole, AccountStatus newStatus, UserAccount account) {
@@ -55,10 +55,10 @@ public class AccountService {
         if (resultingRole == account.getRole() && resultingStatus == account.getStatus()) {   // extension 6b
             throw new ValidationException("The account is already " + account.getRole() + " and " + account.getStatus() + ".");
         }
-        boolean losesActiveAdministrator = account.isActiveAdministrator()
+        boolean losesActiveAdministrator = account.isActiveAdministrator()             // 3.1.2.1
                 && !(resultingRole == Role.ADMINISTRATOR && resultingStatus == AccountStatus.ACTIVE);
         if (losesActiveAdministrator
-                && accounts.countByRoleAndStatus(Role.ADMINISTRATOR, AccountStatus.ACTIVE) <= 1) {   // extension 6a
+                && accounts.countByRoleAndStatus(Role.ADMINISTRATOR, AccountStatus.ACTIVE) <= 1) {   // 3.1.2.2, extension 6a
             throw new ValidationException("The change would leave the system without an active administrator.");
         }
     }

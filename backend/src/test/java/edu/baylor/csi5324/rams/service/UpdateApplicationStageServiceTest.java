@@ -40,7 +40,6 @@ class UpdateApplicationStageServiceTest {
 
     private ApplicationService service;
     private Recruiter recruiter;
-    private UserAccount account;
     private JobPosting posting;
     private Application application;
     private Company company;
@@ -64,7 +63,6 @@ class UpdateApplicationStageServiceTest {
                 recruiters);
 
         recruiter = mock(Recruiter.class);
-        account = mock(UserAccount.class);
         posting = mock(JobPosting.class);
         application = mock(Application.class);
         company = mock(Company.class);
@@ -79,13 +77,11 @@ class UpdateApplicationStageServiceTest {
         when(recruiters.findById(7L))
                 .thenReturn(Optional.of(recruiter));
 
-        when(recruiter.getAccount())
-                .thenReturn(account);
 
-        when(account.getRole())
+        when(recruiter.getRole())
                 .thenReturn(Role.RECRUITER);
 
-        when(account.getStatus())
+        when(recruiter.getStatus())
                 .thenReturn(AccountStatus.ACTIVE);
 
         when(applications.findById(15L))
@@ -151,10 +147,8 @@ class UpdateApplicationStageServiceTest {
         when(recruiters.findById(7L))
                 .thenReturn(Optional.of(recruiter));
 
-        when(recruiter.getAccount())
-                .thenReturn(account);
 
-        when(account.getRole())
+        when(recruiter.getRole())
                 .thenReturn(Role.APPLICANT);
 
         assertThrows(
@@ -176,13 +170,11 @@ class UpdateApplicationStageServiceTest {
         when(recruiters.findById(7L))
                 .thenReturn(Optional.of(recruiter));
 
-        when(recruiter.getAccount())
-                .thenReturn(account);
 
-        when(account.getRole())
+        when(recruiter.getRole())
                 .thenReturn(Role.RECRUITER);
 
-        when(account.getStatus())
+        when(recruiter.getStatus())
                 .thenReturn(AccountStatus.DEACTIVATED);
 
         assertThrows(
@@ -205,13 +197,11 @@ class UpdateApplicationStageServiceTest {
         when(recruiters.findById(7L))
                 .thenReturn(Optional.of(recruiter));
 
-        when(recruiter.getAccount())
-                .thenReturn(account);
 
-        when(account.getRole())
+        when(recruiter.getRole())
                 .thenReturn(Role.RECRUITER);
 
-        when(account.getStatus())
+        when(recruiter.getStatus())
                 .thenReturn(AccountStatus.ACTIVE);
 
         when(applications.findById(15L))
@@ -264,13 +254,11 @@ class UpdateApplicationStageServiceTest {
         when(recruiters.findById(7L))
                 .thenReturn(Optional.of(recruiter));
 
-        when(recruiter.getAccount())
-                .thenReturn(account);
 
-        when(account.getRole())
+        when(recruiter.getRole())
                 .thenReturn(Role.RECRUITER);
 
-        when(account.getStatus())
+        when(recruiter.getStatus())
                 .thenReturn(AccountStatus.ACTIVE);
 
         when(applications.findById(15L))

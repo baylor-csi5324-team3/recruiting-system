@@ -54,32 +54,17 @@ class UpdateApplicationStageIntegrationTest {
     void recruiterStageUpdateIsPersistedAndVisibleToApplicant() {
 
         // Step 1: Create an applicant.
-        UserAccount applicantAccount = accounts.save(
-                new UserAccount(
-                        "stage-a@example.com",
-                        encoder.encode("test password"),
-                        Role.APPLICANT,
-                        AccountStatus.ACTIVE));
 
         Applicant applicant = applicants.save(
-                new Applicant("Applicant", applicantAccount));
+                new Applicant("stage-a@example.com", encoder.encode("test password"), "Applicant", AccountStatus.ACTIVE));
 
         // Step 2: Create a company and recruiter.
         Company company = companies.save(
                 new Company("Stage Test Co"));
 
-        UserAccount recruiterAccount = accounts.save(
-                new UserAccount(
-                        "stage-r@example.com",
-                        encoder.encode("test password"),
-                        Role.RECRUITER,
-                        AccountStatus.ACTIVE));
 
         Recruiter recruiter = recruiters.save(
-                new Recruiter(
-                        "Recruiter",
-                        recruiterAccount,
-                        company));
+                new Recruiter("stage-r@example.com", encoder.encode("test password"), "Recruiter", company, AccountStatus.ACTIVE));
 
         // Step 3: Create a job posting.
         JobPosting posting = jobs.save(

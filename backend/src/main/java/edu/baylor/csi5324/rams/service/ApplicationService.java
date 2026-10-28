@@ -101,7 +101,7 @@ public class ApplicationService {
     private Applicant requireActiveApplicant(Long applicantId) {
         Applicant applicant = applicants.findById(applicantId)
                 .orElseThrow(() -> new NotFoundException("Applicant not found."));
-        UserAccount account = applicant.getAccount();
+        UserAccount account = applicant;
         if (account == null || account.getRole() != Role.APPLICANT
                 || account.getStatus() != AccountStatus.ACTIVE) {
             throw new ValidationException("An active applicant account is required.");
@@ -116,7 +116,7 @@ public class ApplicationService {
     public SubmittedResume getSubmittedResumeForRecruiter(Long applicationId, Long recruiterId) {
         Recruiter recruiter = recruiters.findById(recruiterId)
                 .orElseThrow(() -> new NotFoundException("Recruiter not found."));
-        UserAccount account = recruiter.getAccount();
+        UserAccount account = recruiter;
         if (account == null || account.getRole() != Role.RECRUITER
                 || account.getStatus() != AccountStatus.ACTIVE) {
             throw new ValidationException("An active recruiter account is required.");
@@ -180,7 +180,7 @@ public class ApplicationService {
                 findOwnedApplication(applicationId, applicantId);
 
         Long changedByUserId =
-                application.getApplicant().getAccount().getId();
+                application.getApplicant().getId();
 
         try {
             application.withdraw(
@@ -231,7 +231,7 @@ public class ApplicationService {
                         new NotFoundException("Recruiter not found."));
 
         // Step 3: Validate recruiter role and account status.
-        UserAccount account = recruiter.getAccount();
+        UserAccount account = recruiter;
 
         if (account == null
                 || account.getRole() != Role.RECRUITER
@@ -280,7 +280,7 @@ public class ApplicationService {
                         "No applicant with id " + applicantId + "."
                 ));
 
-        UserAccount account = applicant.getAccount();
+        UserAccount account = applicant;
 
         if (account == null
                 || account.getRole() != Role.APPLICANT
@@ -312,7 +312,7 @@ public class ApplicationService {
                         "No applicant with id " + applicantId + "."
                 ));
 
-        UserAccount account = applicant.getAccount();
+        UserAccount account = applicant;
 
         if (account == null
                 || account.getRole() != Role.APPLICANT

@@ -64,7 +64,8 @@ public class AccountController {
                                      @RequestBody AccountChange change,
                                      @RequestHeader(ADMIN_HEADER) Long adminId) {
         Administrator admin = identifiedAdministrator(adminId);
-        UserAccount updated = accountService.applyChange(accountId, change.newRole(), change.newStatus(), admin);  // 3.1
+        UserAccount updated = accountService.applyChange(accountId, change.newRole(), change.newStatus(),
+                change.companyName(), admin);                                     // 3.1
         return new AccountView(updated.getId(), updated.getEmail(), updated.getRole(), updated.getStatus());
     }
 
@@ -73,8 +74,8 @@ public class AccountController {
                 .orElseThrow(() -> new NotFoundException("No administrator with id " + adminId + "."));
     }
 
-    /** Step 5: a new role, a new status, or both. A missing value keeps the current one. */
-    public record AccountChange(Role newRole, AccountStatus newStatus) {
+    /** Step 5: a new role, a new status, or both. A missing value keeps the current one; a new recruiter needs a company. */
+    public record AccountChange(Role newRole, AccountStatus newStatus, String companyName) {
     }
 
     /** Steps 4 and 8: what the system reports about an account. */

@@ -47,28 +47,16 @@ class ApplicationHistoryIntegrationTest {
     void setUp() {
         String suffix = UUID.randomUUID().toString();
 
-        UserAccount applicantAccount = accounts.save(new UserAccount(
-                "history-applicant-" + suffix + "@example.com",
-                "unused-test-hash",
-                Role.APPLICANT,
-                AccountStatus.ACTIVE
-        ));
 
         Applicant applicant = applicants.save(
-                new Applicant("History Applicant", applicantAccount)
+                new Applicant("history-applicant-" + suffix + "@example.com", "unused-test-hash", "History Applicant", AccountStatus.ACTIVE)
         );
 
         Company company = companies.save(new Company("History Company"));
 
-        UserAccount recruiterAccount = accounts.save(new UserAccount(
-                "history-recruiter-" + suffix + "@example.com",
-                "unused-test-hash",
-                Role.RECRUITER,
-                AccountStatus.ACTIVE
-        ));
 
         Recruiter recruiter = recruiters.save(
-                new Recruiter("History Recruiter", recruiterAccount, company)
+                new Recruiter("history-recruiter-" + suffix + "@example.com", "unused-test-hash", "History Recruiter", company, AccountStatus.ACTIVE)
         );
 
         JobPosting job = jobs.save(new JobPosting(
@@ -84,8 +72,8 @@ class ApplicationHistoryIntegrationTest {
         ));
 
         applicantId = applicant.getId();
-        applicantUserId = applicantAccount.getId();
-        recruiterUserId = recruiterAccount.getId();
+        applicantUserId = applicant.getId();
+        recruiterUserId = recruiter.getId();
 
         Application application =
                 new Application(applicant, job, SUBMITTED_AT);

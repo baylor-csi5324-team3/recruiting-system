@@ -15,7 +15,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
-/** Read models and small extras for the React front end (actors, jobs, applications, accounts, profile, saved jobs).
+/** Read models and small extras for the React front end (actors, jobs, applications, accounts, saved jobs).
+ * The applicant profile is served by ApplicantProfileController (Update Applicant Profile).
  * Existing application, posting and account business rules remain in their services. */
 @RestController
 @RequestMapping("/api/demo")
@@ -51,22 +52,20 @@ public class DemoIntegrationController {
     public record ApplicationView(Long id, Long jobId, String name, String email, String stage,
             LocalDateTime submittedAt, String resumeFilename, List<StageRecord> history) {}
     public record AccountView(Long id, String name, String email, String role, boolean active) {}
-    public record ProfileView(String name, String email, String phone, String location,
-            String headline, String bio, String resume) {}
 
     @GetMapping("/actors")
     public List<Actor> actors() {
         List<Actor> result = new ArrayList<>();
         for (Applicant a: applicants.findAll()) {
-            if (a.getAccount().getRole()!=Role.APPLICANT || a.getAccount().getStatus()!=AccountStatus.ACTIVE) continue;
-            result.add(new Actor(a.getId(), a.getName(), a.getAccount().getEmail(), "Applicant", null));
+            if (a.getRole()!=Role.APPLICANT || a.getStatus()!=AccountStatus.ACTIVE) continue;
+            result.add(new Actor(a.getId(), a.getName(), a.getEmail(), "Applicant", null));
         }
         for (Recruiter a: recruiters.findAll()) {
-            if (a.getAccount().getRole()!=Role.RECRUITER || a.getAccount().getStatus()!=AccountStatus.ACTIVE) continue;
-            result.add(new Actor(a.getId(), a.getName(), a.getAccount().getEmail(), "Recruiter", a.getCompany().getName()));
+            if (a.getRole()!=Role.RECRUITER || a.getStatus()!=AccountStatus.ACTIVE) continue;
+            result.add(new Actor(a.getId(), a.getName(), a.getEmail(), "Recruiter", a.getCompany().getName()));
         }
         for (Administrator a: admins.findAll()) {
-            if (a.getAccount() != null && a.getAccount().getRole()==Role.ADMINISTRATOR && a.getAccount().getStatus()==AccountStatus.ACTIVE) result.add(new Actor(a.getId(), a.getName(), a.getAccount().getEmail(), "Administrator", null));
+            if (a.getRole()==Role.ADMINISTRATOR && a.getStatus()==AccountStatus.ACTIVE) result.add(new Actor(a.getId(), a.getName(), a.getEmail(), "Administrator", null));
         }
         return result;
     }
@@ -94,7 +93,7 @@ public class DemoIntegrationController {
                 .filter(a -> applicantId != null ? a.getApplicant().getId().equals(applicantId)
                         : a.getJobPosting().belongsTo(recruiter.getCompany()))
                 .map(a -> new ApplicationView(a.getId(), a.getJobPosting().getId(), a.getApplicant().getName(),
-                        a.getApplicant().getAccount().getEmail(), a.getStage().name(), a.getSubmitDate(),
+                        a.getApplicant().getEmail(), a.getStage().name(), a.getSubmitDate(),
                         a.getResumeFilename(), a.getStageHistory())).toList();
     }
 
@@ -116,28 +115,6 @@ public class DemoIntegrationController {
         case ADMINISTRATOR -> "Administrator";
     }; }
 
-    @GetMapping("/profile/{id}")
-    public ProfileView profile(@PathVariable Long id) {
-        Applicant a = requireApplicant(id);
-        Map<String,Object> extra = section("profile-"+id);
-        String currentResume = resumes.findByApplicantIdOrderByIdDesc(id).stream()
-                .findFirst().map(Resume::getFilename).orElse("");
-        return new ProfileView(a.getName(), a.getAccount().getEmail(), a.getPhone(),
-                (String)extra.getOrDefault("location", ""), (String)extra.getOrDefault("headline", ""),
-                (String)extra.getOrDefault("bio", ""), currentResume);
-    }
-    @PutMapping("/profile/{id}")
-    public ProfileView updateProfile(@PathVariable Long id, @RequestBody ProfileView data) {
-        Applicant a = requireApplicant(id);
-        if (data.name() == null || data.name().isBlank()) throw new ValidationException("Name is required.");
-        a.setName(data.name().trim());
-        a.setPhone(data.phone());
-        applicants.save(a);
-        putSection("profile-"+id, Map.of("location", safe(data.location()),
-                "headline", safe(data.headline()), "bio", safe(data.bio())));
-        return profile(id);
-    }
-    private static String safe(String s) { return s == null ? "" : s; }
 
     @GetMapping("/saved/{id}")
     public List<Long> saved(@PathVariable Long id) {
@@ -156,19 +133,19 @@ public class DemoIntegrationController {
 
     private Applicant requireApplicant(Long id) {
         Applicant a = applicants.findById(id).orElseThrow(() -> new NotFoundException("Applicant not found."));
-        if (a.getAccount().getRole()!=Role.APPLICANT || a.getAccount().getStatus()!=AccountStatus.ACTIVE)
+        if (a.getRole()!=Role.APPLICANT || a.getStatus()!=AccountStatus.ACTIVE)
             throw new ValidationException("An active applicant account is required.");
         return a;
     }
     private Recruiter requireRecruiter(Long id) {
         Recruiter a = recruiters.findById(id).orElseThrow(() -> new NotFoundException("Recruiter not found."));
-        if (a.getAccount().getRole()!=Role.RECRUITER || a.getAccount().getStatus()!=AccountStatus.ACTIVE)
+        if (a.getRole()!=Role.RECRUITER || a.getStatus()!=AccountStatus.ACTIVE)
             throw new ValidationException("An active recruiter account is required.");
         return a;
     }
     private void requireAdmin(Long id) {
         Administrator a = admins.findById(id).orElseThrow(() -> new NotFoundException("Administrator not found."));
-        if (a.getAccount()==null || a.getAccount().getRole()!=Role.ADMINISTRATOR || a.getAccount().getStatus()!=AccountStatus.ACTIVE)
+        if (a.getRole()!=Role.ADMINISTRATOR || a.getStatus()!=AccountStatus.ACTIVE)
             throw new ValidationException("An active administrator account is required.");
     }
 

@@ -63,14 +63,14 @@ class RegistrationStartupHttpTest {
             var account = accounts.findByEmailIgnoreCase(email).orElseThrow();
             assertEquals(account.getId().longValue(), mapper.readTree(response.body()).get("accountId").asLong());
             assertTrue(encoder.matches("Real HTTP secret", account.getPasswordHash()));
-            if (role.equals("RECRUITER")) assertEquals("Baylor Tech", recruiters.findByAccountId(account.getId()).orElseThrow().getCompany().getName());
-            else assertTrue(recruiters.findByAccountId(account.getId()).isEmpty());
+            if (role.equals("RECRUITER")) assertEquals("Baylor Tech", assertInstanceOf(Recruiter.class, account).getCompany().getName());
+            else assertInstanceOf(Applicant.class, account);
         }
 
         var originalIds = postings.findAll().stream().map(JobPosting::getId).toList();
         var applicant = accounts.findByEmailIgnoreCase("applicant@example.com").orElseThrow();
         String originalHash = applicant.getPasswordHash();
-        applicant.updateRoleAndStatus(Role.RECRUITER, AccountStatus.DEACTIVATED, null, LocalDateTime.of(2026, 10, 12, 9, 0));
+        applicant.updateRoleAndStatus(null, AccountStatus.DEACTIVATED, null, LocalDateTime.of(2026, 10, 12, 9, 0));
         accounts.saveAndFlush(applicant);
         seedDevelopmentData.run();
         assertEquals(originalIds, postings.findAll().stream().map(JobPosting::getId).toList());
@@ -80,7 +80,7 @@ class RegistrationStartupHttpTest {
         assertEquals(1, administrators.count());
         var preserved = accounts.findById(applicant.getId()).orElseThrow();
         assertEquals(originalHash, preserved.getPasswordHash());
-        assertEquals(Role.RECRUITER, preserved.getRole());
+        assertEquals(Role.APPLICANT, preserved.getRole());
         assertEquals(AccountStatus.DEACTIVATED, preserved.getStatus());
 
         applications.deleteAll();

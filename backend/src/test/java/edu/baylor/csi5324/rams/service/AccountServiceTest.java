@@ -2,6 +2,10 @@ package edu.baylor.csi5324.rams.service;
 
 import edu.baylor.csi5324.rams.domain.AccountStatus;
 import edu.baylor.csi5324.rams.domain.Administrator;
+import edu.baylor.csi5324.rams.domain.Applicant;
+import edu.baylor.csi5324.rams.domain.Company;
+import edu.baylor.csi5324.rams.domain.Recruiter;
+import edu.baylor.csi5324.rams.domain.Resume;
 import edu.baylor.csi5324.rams.domain.Role;
 import edu.baylor.csi5324.rams.domain.UserAccount;
 import edu.baylor.csi5324.rams.repository.AdministratorRepository;
@@ -22,6 +26,7 @@ import org.springframework.test.context.ActiveProfiles;
 
 import static edu.baylor.csi5324.rams.service.FixedClockConfig.TODAY;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
@@ -40,6 +45,7 @@ class AccountServiceTest {
     @Autowired ApplicationRepository applications;
     @Autowired ApplicantRepository applicants;
     @Autowired ResumeRepository resumes;
+    @Autowired edu.baylor.csi5324.rams.repository.CompanyRepository companies;
 
     private Administrator admin;
     private UserAccount adminAccount;
@@ -60,27 +66,12 @@ class AccountServiceTest {
         administrators.deleteAll();
         accounts.deleteAll();
 
-        adminAccount = accounts.save(
-                new UserAccount(
-                        "admin@example.com",
-                        encoder.encode("Account fixture secret"),
-                        Role.ADMINISTRATOR,
-                        AccountStatus.ACTIVE
-                )
-        );
+        admin = administrators.save(new Administrator(
+                "admin@example.com", encoder.encode("Account fixture secret"), "Ada", AccountStatus.ACTIVE));
+        adminAccount = admin;
 
-        admin = administrators.save(
-                new Administrator("Ada", adminAccount)
-        );
-
-        applicant = accounts.save(
-                new UserAccount(
-                        "applicant@example.com",
-                        encoder.encode("Account fixture secret"),
-                        Role.APPLICANT,
-                        AccountStatus.ACTIVE
-                )
-        );
+        applicant = accounts.save(new Applicant(
+                "applicant@example.com", encoder.encode("Account fixture secret"), "Ann", AccountStatus.ACTIVE));
     }
 
     @Test
@@ -93,9 +84,13 @@ class AccountServiceTest {
     @Test
     @DisplayName("applyChange assigns the new role and records the administrator and the time (steps 7 and 8)")
     void applyChangeAssignsRole() {
-        UserAccount updated = service.applyChange(applicant.getId(), Role.RECRUITER, null, admin);
+        UserAccount updated = service.applyChange(applicant.getId(), Role.ADMINISTRATOR, null, admin);
 
-        assertEquals(Role.RECRUITER, updated.getRole());
+        assertInstanceOf(Administrator.class, updated);
+        assertEquals(Role.ADMINISTRATOR, updated.getRole());
+        assertEquals("applicant@example.com", updated.getEmail());
+        assertEquals("Ann", updated.getName());
+        assertTrue(accounts.findById(applicant.getId()).isEmpty(), "the applicant object is replaced");
         assertEquals(AccountStatus.ACTIVE, updated.getStatus());
         assertEquals(admin.getId(), updated.getLastChangedBy().getId());
         assertEquals(TODAY.atTime(9, 0), updated.getLastChangedAt());
@@ -125,8 +120,32 @@ class AccountServiceTest {
         assertThrows(ValidationException.class, () -> service.applyChange(adminAccount.getId(), Role.APPLICANT, null, admin));
         assertEquals(Role.ADMINISTRATOR, accounts.findById(adminAccount.getId()).orElseThrow().getRole());
 
-        accounts.save(new UserAccount("second.admin@example.com", encoder.encode("Account fixture secret"), Role.ADMINISTRATOR, AccountStatus.ACTIVE));
+        accounts.save(new Administrator("second.admin@example.com", encoder.encode("Account fixture secret"), "Bea", AccountStatus.ACTIVE));
         assertEquals(AccountStatus.DEACTIVATED, service.applyChange(adminAccount.getId(), null, AccountStatus.DEACTIVATED, admin).getStatus());
+    }
+
+    @Test
+    @DisplayName("an applicant becomes a recruiter of the named company, found ignoring case")
+    void applicantBecomesRecruiterOfTheNamedCompany() {
+        Company company = companies.findByNameIgnoreCase("Baylor Tech").orElseGet(() -> companies.save(new Company("Baylor Tech")));
+
+        UserAccount updated = service.applyChange(applicant.getId(), Role.RECRUITER, null, " baylor TECH ", admin);
+
+        Recruiter recruiter = assertInstanceOf(Recruiter.class, updated);
+        assertEquals(company.getId(), recruiter.getCompany().getId());
+        assertEquals("applicant@example.com", recruiter.getEmail());
+        assertEquals(admin.getId(), recruiter.getLastChangedBy().getId());
+    }
+
+    @Test
+    @DisplayName("a role change is refused when it needs a company or would lose records (extension 6c)")
+    void roleChangeRefusedWhenRecordsDependOnTheRole() {
+        assertTrue(assertThrows(ValidationException.class,
+                () -> service.applyChange(applicant.getId(), Role.RECRUITER, null, admin)).getMessage().contains("company"));
+        resumes.save(new Resume((Applicant) applicant, "cv.pdf", new byte[] {1}));
+        assertTrue(assertThrows(ValidationException.class,
+                () -> service.applyChange(applicant.getId(), Role.ADMINISTRATOR, null, admin)).getMessage().contains("resumes"));
+        assertInstanceOf(Applicant.class, accounts.findById(applicant.getId()).orElseThrow());
     }
 
     @Test

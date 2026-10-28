@@ -99,16 +99,20 @@ Every member also serves as a developer/tester for at least three use cases.
 
 By default, the backend starts with an **in-memory H2 database** seeded with demo users
 and job postings. For the Submit Application persistence demonstration, run the `demo`
-profile to use a **file-backed H2 database** (see instructions below). Sign in is not
-implemented yet: recruiter and administrator demo endpoints use the `X-Recruiter-Id`
-and `X-Administrator-Id` headers, while the applicant demo uses a selected applicant ID.
-These identifiers are for development only, not secure authentication.
+profile to use a **file-backed H2 database** (see instructions below). Since v2.5 the user
+signs in (`POST /api/accounts/login`, session cookie; `GET /api/accounts/me`, `POST /api/accounts/logout`).
+The end points still read the caller from the `X-Applicant-Id`, `X-Recruiter-Id` and
+`X-Administrator-Id` headers, but every identifier must belong to the signed-in user
+(`rams.login.enforce=true`; set it to false to call the API without signing in). The sample
+accounts `admin@`, `recruiter@`, `applicant@` and `dormant@example.com` share the development
+password in `rams.seed.demo-password` (`Demo-pass-2026`). `UserAccount` is an abstract JPA
+superclass of `Applicant`, `Recruiter` and `Administrator`, as in the domain model.
 
 | Use case | Owner | Endpoints |
 |---|---|---|
 | UC-01 Search Available Jobs | Luyu Niu | `GET /api/jobs/search` (asks for criteria) · `GET /api/jobs/search/results?keyword=&location=&employmentType=` (open postings, newest first; all parameters optional) |
 | UC-09 Create and Publish a Job Posting | Luyu Niu | `GET /api/postings/new` · `POST /api/postings` (JSON: title, description, location, employmentType, closingDate → DRAFT) · `POST /api/postings/{id}/publish` |
-| UC-15 Manage Accounts and Roles | Luyu Niu | `GET /api/accounts/change` · `GET /api/accounts/lookup?email=` · `PUT /api/accounts/{id}/role-status` (JSON: newRole and/or newStatus) |
+| UC-15 Manage Accounts and Roles | Luyu Niu | `GET /api/accounts/change` · `GET /api/accounts/lookup?email=` · `PUT /api/accounts/{id}/role-status` (JSON: newRole and/or newStatus, companyName for a new recruiter; a role change replaces the account object) |
 | Submit Job Application | Yuting Mei | `POST /api/applications` (submit an application after validation) · `GET /api/applications?applicantId={id}` (retrieve submitted applications) · `POST /api/applicants/{id}/resumes` (upload a resume) |
 
 Business-rule failures return `400 {"message": ...}` and unknown ids or emails return `404`.
@@ -148,6 +152,8 @@ letter, review the application, and confirm submission.
 | Submit API | `POST /api/applications` | Validate and persist a new application |
 | Application history API | `GET /api/applications?applicantId=1` | Read stored records for a selected applicant |
 | Resume upload API | `POST /api/applicants/{id}/resumes` | Upload a PDF/DOCX resume for an applicant |
+| User Login | Xinyi Chen | `POST /api/accounts/login` (JSON: email, password) · `GET /api/accounts/me` · `POST /api/accounts/logout` |
+| Update Applicant Profile | Xinyi Chen | `GET /api/profile` · `PUT /api/profile` (JSON: name, phone, location, headline, bio; `X-Applicant-Id` header) |
 
 ### Run and verify database persistence
 
@@ -172,10 +178,9 @@ The demo seed data already includes OFFER-stage applications for some postings. 
 open job not yet applied to (for the current seed, `Frontend Developer`) to test a new
 submission; submitting the same job again should be rejected.
 
-**Current scope and limitations:** The demo does not implement authenticated applicant
-sessions or a recruiter-facing application review screen. The `frontend/` React workspace
-is unchanged; these demonstration pages are served directly by Spring Boot on port 8080.
-The existing Offer Response use case continues to use the same `Application` records.
+**Current scope and limitations:** these two demonstration pages are served directly by
+Spring Boot on port 8080 and do not sign in; start the back end with `--rams.login.enforce=false`
+to use them. The `frontend/` React workspace signs in through the login end points.
 The sample jobs CSV at `backend/src/main/resources/jobs-sample.csv` is a reference fixture,
 not an automatic CSV importer.
 

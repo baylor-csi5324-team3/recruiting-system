@@ -26,7 +26,7 @@ public class Recruiter extends UserAccount {
         this.company = Objects.requireNonNull(company);
     }
 
-    /** Manage Accounts and Roles, SD message 3.1.3.2: the same person, now a recruiter of the given company. */
+    /** Manage Accounts and Roles, SD 6.14 message 3.1.5.2: the same person, now a recruiter of the given company. */
     public Recruiter(UserAccount previous, Company company) {
         super(previous, Role.RECRUITER);
         this.company = Objects.requireNonNull(company);

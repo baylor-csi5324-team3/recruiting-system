@@ -58,7 +58,7 @@ export function ExploreJobs({savedOnly=false}:{savedOnly?:boolean}) {
     (savedOnly ? saved.includes(j.id) : (resultIds ? resultIds.includes(j.id) : j.status === 'Open')) &&
     (!savedOnly || !search || `${j.title} ${j.company}`.toLowerCase().includes(search.toLowerCase())) &&
     (!location || j.location===location) && (!type || j.type===type))
-    .sort((a,b)=>sort==='closing'?a.closes.localeCompare(b.closes):b.id-a.id),
+    .sort((a,b)=>sort==='closing'?a.closes.localeCompare(b.closes):(resultIds&&!savedOnly?resultIds.indexOf(a.id)-resultIds.indexOf(b.id):b.id-a.id)),
   [jobs,saved,savedOnly,search,location,type,sort,resultIds]);
   const openCount=jobs.filter(j=>j.status==='Open').length;
   return <div className={`opportunities-layout ${savedOnly?'shortlist-layout':'explore-layout'}`}>

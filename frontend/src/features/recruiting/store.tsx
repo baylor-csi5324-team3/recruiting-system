@@ -129,6 +129,16 @@ function useRecruitingState() {
             }),
           "Application withdrawn",
         );
+      } else if (role === "Recruiter" && actor && stage === "Offer") {
+        // Extend Job Offer has its own endpoint (SD 6.13).
+        await after(
+          () =>
+            api(`/api/applications/${app.id}/extend-offer`, {
+              method: "POST",
+              headers: { "X-Recruiter-Id": String(actor.id) },
+            }),
+          "Offer recorded",
+        );
       } else if (role === "Recruiter" && actor) {
         await after(
           () =>

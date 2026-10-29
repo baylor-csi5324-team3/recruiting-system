@@ -94,7 +94,7 @@ public abstract class UserAccount {
     }
 
     /**
-     * SD message 3.1.3.4: applies the change and records who made it and when. The role is fixed by the subclass,
+     * SD 6.14 messages 3.1.3 and 3.1.5.4: applies the change and records who made it and when. The role is fixed by the subclass,
      * so only the current role is accepted here; AccountService replaces the object for a new role.
      */
     public void updateRoleAndStatus(Role newRole, AccountStatus newStatus, Administrator admin, LocalDateTime time) {

@@ -18,7 +18,7 @@ public class Administrator extends UserAccount {
         super(email, passwordHash, name, Role.ADMINISTRATOR, status);
     }
 
-    /** Manage Accounts and Roles, SD message 3.1.3.2: the same person, now an administrator. */
+    /** Manage Accounts and Roles, SD 6.14 message 3.1.5.2: the same person, now an administrator. */
     public Administrator(UserAccount previous) {
         super(previous, Role.ADMINISTRATOR);
     }

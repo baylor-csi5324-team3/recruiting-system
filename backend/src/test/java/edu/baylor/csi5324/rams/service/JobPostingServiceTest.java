@@ -125,7 +125,7 @@ class JobPostingServiceTest {
     }
 
     @Test
-    @DisplayName("publish rejects a draft whose closing date has passed (extension 6a)")
+    @DisplayName("publish rejects a draft whose closing date has passed (extension 5a3)")
     void publishRejectsPassedClosingDate() {
         JobPosting draft = postings.save(new JobPosting(new PostingDetails("Old", "desc", "Waco, TX", "FULL_TIME", TODAY), recruiter, TODAY.atTime(8, 0)));
 

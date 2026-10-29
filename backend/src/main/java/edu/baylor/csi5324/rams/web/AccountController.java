@@ -24,8 +24,8 @@ import java.util.List;
  * 1 startAccountChange, 2 identifyAccount, 2.1 findAccount, 2.2 getRoleAndStatus,
  * 3 requestChange, 3.1 applyChange.
  *
- * <p>Sign in is not implemented yet, so the administrator is identified by the
- * {@code X-Administrator-Id} header (precondition 1 of the use case).
+ * <p>The administrator is identified by the {@code X-Administrator-Id} header (precondition 1 of the use case);
+ * IdentityCheckInterceptor makes sure it is the signed-in user.
  */
 @RestController
 @RequestMapping("/api/accounts")

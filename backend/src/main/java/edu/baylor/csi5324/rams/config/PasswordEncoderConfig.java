@@ -5,7 +5,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 
-/** Shared credential encoder; future Login can inject the same PasswordEncoder to verify passwords. */
+/** Shared credential encoder: Register Account hashes with it and User Login (AuthenticationService) verifies with it. */
 @Configuration
 public class PasswordEncoderConfig {
     @Bean

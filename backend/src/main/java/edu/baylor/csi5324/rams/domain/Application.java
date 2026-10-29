@@ -101,10 +101,6 @@ public class Application {
     }
 
     // The recruiter extends an offer; identity and company permission are checked by the service.
-    public void makeOffer() {
-        makeOffer(LocalDateTime.now(), null);
-    }
-
     public void makeOffer(
             LocalDateTime changedAt,
             Long changedByUserId) {
@@ -193,10 +189,6 @@ public class Application {
 
         this.stage = nextStage;
         this.stageUpdatedAt = changedAt;
-    }
-
-    public void startReview() {
-        startReview(LocalDateTime.now(), null);
     }
 
     public void startReview(

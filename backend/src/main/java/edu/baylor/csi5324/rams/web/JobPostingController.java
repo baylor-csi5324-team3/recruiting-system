@@ -27,8 +27,8 @@ import java.util.List;
  * UC-09 Create and Publish a Job Posting. Controller lifeline of the sequence diagram:
  * 1 startPosting, 2 submitDetails, 2.1 validate, 2.2 createDraft, 3 publish, 3.1 publish.
  *
- * <p>Sign in is not implemented yet, so the recruiter is identified by the
- * {@code X-Recruiter-Id} header (precondition 1 of the use case).
+ * <p>The recruiter is identified by the {@code X-Recruiter-Id} header (precondition 1 of the use case);
+ * IdentityCheckInterceptor makes sure it is the signed-in user.
  */
 @RestController
 @RequestMapping("/api/postings")

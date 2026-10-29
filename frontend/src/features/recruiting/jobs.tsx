@@ -6,6 +6,10 @@ import hero from '@/assets/opportunities.jpg';
 import { useRecruiting } from './store';
 import { formatDate, type Job } from './data';
 import { toast } from 'sonner';
+import { api, toBackendType } from '@/lib/recruiting-api';
+
+/** One result of Search Available Jobs (GET /api/jobs/search/results, JobSearchController.submitCriteria). */
+type PostingSummary = { id: number; title: string; companyName: string; location: string; employmentType: string; closingDate: string };
 
 export function CompanyLogo({job}:{job:Job}) {
   return <span className={`company-logo ${job.color}`} aria-label={job.company}>{job.logo}</span>;
@@ -32,27 +36,44 @@ export function ExploreJobs({savedOnly=false}:{savedOnly?:boolean}) {
   const [type,setType]=useState('');
   const [sort,setSort]=useState('recent');
   const [selected,setSelected]=useState<Job|null>(null);
+  // Search Available Jobs: the ids returned by the back end for the last search (null = no search yet, show all open postings).
+  const [resultIds,setResultIds]=useState<number[]|null>(null);
+  const [searchError,setSearchError]=useState('');
+  const runSearch = async () => {
+    setSearchError('');
+    const qs = new URLSearchParams();
+    if (keyword.trim()) qs.set('keyword', keyword.trim());
+    if (location) qs.set('location', location);
+    if (type) qs.set('employmentType', toBackendType(type));
+    try {
+      const results = await api<PostingSummary[]>('/api/jobs/search/results?' + qs.toString());
+      setResultIds(results.map(r => r.id));
+    } catch (e) {
+      setSearchError(e instanceof Error ? e.message : 'The search could not be run.');
+    }
+  };
   const options = useMemo(()=>[...new Set(jobs.map(j=>j.location))].sort(),[jobs]);
   const types = useMemo(()=>[...new Set(jobs.map(j=>j.type))].sort(),[jobs]);
   const matched = useMemo(()=>jobs.filter(j=>
-    (savedOnly ? saved.includes(j.id) : j.status === 'Open') &&
-    (!search || `${j.title} ${j.company}`.toLowerCase().includes(search.toLowerCase())) &&
+    (savedOnly ? saved.includes(j.id) : (resultIds ? resultIds.includes(j.id) : j.status === 'Open')) &&
+    (!savedOnly || !search || `${j.title} ${j.company}`.toLowerCase().includes(search.toLowerCase())) &&
     (!location || j.location===location) && (!type || j.type===type))
     .sort((a,b)=>sort==='closing'?a.closes.localeCompare(b.closes):b.id-a.id),
-  [jobs,saved,savedOnly,search,location,type,sort]);
+  [jobs,saved,savedOnly,search,location,type,sort,resultIds]);
   const openCount=jobs.filter(j=>j.status==='Open').length;
   return <div className={`opportunities-layout ${savedOnly?'shortlist-layout':'explore-layout'}`}>
     {savedOnly ? <div className="mb-7"><p className="mb-2 text-xs text-primary">YOUR SHORTLIST</p><h1 className="page-heading">Saved opportunities</h1><p className="mt-2 text-sm text-muted-foreground">Saved jobs are loaded from the server.</p></div>
       : <><div className="explore-intro"><div><p className="text-[12px] text-muted-foreground">{role==='Guest'?'A fresh start begins here':'A little ambition goes a long way'}</p><h2 className="mt-1 text-[18px] font-semibold">{role==='Guest'?'Welcome to Verdant.':`Make your next move${actor?', '+actor.name.split(' ')[0]:''}.`}</h2></div></div>
         <section className="opportunity-banner"><img src={hero} alt="Wind turbines on green hills" width={1920} height={768}/><div className="banner-copy"><span className="banner-eyebrow"><Sprout className="size-3.5"/> THE OPPORTUNITY EDIT</span><h1>Good work.<br/>Great possibilities.</h1><p>Find your place in a team that moves you forward.</p></div><span className="banner-index"><span className="banner-index-number">{String(openCount).padStart(2,'0')}</span><span>open roles</span></span></section></>}
-    <form onSubmit={e=>{e.preventDefault();setSearch(keyword);}} className="job-search"><div className="flex flex-1 items-center gap-2.5 px-3"><Search className="size-4 shrink-0 text-muted-foreground"/><input aria-label="Job title or company" placeholder="Job title or company" value={keyword} onChange={e=>setKeyword(e.target.value)} className="h-9 w-full min-w-0 bg-transparent text-xs"/></div>
+    <form onSubmit={e=>{e.preventDefault();setSearch(keyword);if(!savedOnly)void runSearch();}} className="job-search"><div className="flex flex-1 items-center gap-2.5 px-3"><Search className="size-4 shrink-0 text-muted-foreground"/><input aria-label={savedOnly?"Job title or company":"Job title"} placeholder={savedOnly?"Job title or company":"Job title keyword"} value={keyword} onChange={e=>setKeyword(e.target.value)} className="h-9 w-full min-w-0 bg-transparent text-xs"/></div>
       <div className="border-border px-3 sm:w-[190px] sm:border-l"><select aria-label="Location" value={location} onChange={e=>setLocation(e.target.value)} className="h-9 w-full bg-transparent text-xs"><option value="">Any location</option>{options.map(x=><option key={x} value={x}>{x}</option>)}</select></div>
       <div className="border-border px-3 sm:w-[150px] sm:border-l"><select aria-label="Employment type" value={type} onChange={e=>setType(e.target.value)} className="h-9 w-full bg-transparent text-xs"><option value="">Job type</option>{types.map(x=><option key={x}>{x}</option>)}</select></div>
       <Button type="submit" className="h-10 gap-3 text-xs">Search jobs <ArrowRight className="size-3.5"/></Button>
     </form>
+    {searchError && <p role="alert" className="mt-3 text-sm text-destructive">{searchError}</p>}
     <div className="results-heading flex items-center justify-between py-5"><p className="text-[12px]"><strong>{matched.length} opportunities</strong></p><label className="text-[10px] text-muted-foreground">Sort by: <select value={sort} onChange={e=>setSort(e.target.value)} className="bg-transparent"><option value="recent">Most recent</option><option value="closing">Closing soon</option></select></label></div>
     {loading ? <p className="py-6 text-sm">Loading jobs from Spring Boot...</p> : error ? <p role="alert" className="text-destructive">{error}</p> : matched.length ? <div className="job-grid">{matched.map(j=><JobCard job={j} key={j.id} onSelect={setSelected}/>)}</div>
-       : <div className="empty-state"><Search className="mx-auto mb-4 size-7"/><h3>No matching opportunities</h3><Button variant="outline" onClick={()=>{setSearch('');setKeyword('');setLocation('');setType('');}}>Clear filters</Button></div>}
+       : <div className="empty-state"><Search className="mx-auto mb-4 size-7"/><h3>No matching opportunities</h3><Button variant="outline" onClick={()=>{setSearch('');setKeyword('');setLocation('');setType('');setResultIds(null);setSearchError('');}}>Clear filters</Button></div>}
     <JobDetails job={selected} onClose={()=>setSelected(null)}/>
   </div>;
 }

@@ -1,188 +1,174 @@
 # Recruiting and Application Management System
 
-**CSI5324 – Software Engineering · Fall 2026 · Team 3**
+**CSI 5324 Software Engineering I · Fall 2026 · Team 3 "Five Guys"**
 Baylor University · Instructor: Dr. Mengfei Ren
 
-A web-based system that supports the major activities of recruiting and applying for
-employment opportunities. It models a realistic recruiting environment with multiple
-interacting user roles, role-based access control, business rules beyond basic CRUD,
-persistent data, and a coherent end-to-end recruiting workflow.
+A web system for posting jobs, applying for them and following each application through the
+recruiting process. Applicants search and apply, recruiters post jobs and move applications
+through the stages, administrators manage accounts and roles. Interviews and offer negotiation
+happen outside the system; the system records the resulting stage.
 
-## User Roles
+Current release: **v2.5** (Iteration 2): all 14 use cases implemented, 134 back-end tests.
 
-| Role | Responsibility |
-|---|---|
-| **Applicant** | Maintains a profile, explores opportunities, submits applications, tracks progress |
-| **Recruiter / HR** | Manages job postings, reviews applications, advances candidates, records decisions |
-| **Administrator** | Manages accounts, roles and permissions, and system configuration |
+## Team
 
-## Technology Stack
-
-| Layer | Technology | Rationale |
+| Member | Role | Use cases |
 |---|---|---|
-| Presentation | React | Component model suits role-specific dashboards |
-| Backend | Java 21 · Spring Boot / Spring MVC | Recommended stack; mature layering and testing support |
-| Business logic | Spring service layer | Keeps workflow rules out of controllers and entities |
-| Persistence | Spring Data JPA | Clean separation between business logic and data access |
-| Database | H2 (development) · PostgreSQL (production) | H2 needs no install for early iterations; JPA makes the swap cheap |
-| Build | Maven (backend) · npm (frontend) | Maven is required by the course |
-| Testing | JUnit 5 | Required by the course |
-| Version control | Git · GitHub | Required by the course |
-| Issue tracking | GitHub Issues · GitHub Projects | Required by the course |
+| Luyu Niu ([@LuyuNiu](https://github.com/LuyuNiu)) | Project Manager | 4.2.1.1 Search Available Jobs · 4.2.2.1 Create and Publish a Job Posting · 4.2.3.1 Manage Accounts and Roles |
+| Xinyi Chen ([@cchenxinyii](https://github.com/cchenxinyii)) | Requirements Engineer | 4.2.1.2 Register Account · 4.2.1.3 User Login · 4.2.1.4 Update Applicant Profile |
+| Yuting Mei ([@yutingmeivu](https://github.com/yutingmeivu)) | Design Engineer | 4.2.1.5 Submit Job Application · 4.2.1.6 Save Job Posting · 4.2.2.2 Manage Job Posting |
+| Spencer Hammack ([@Spammck](https://github.com/Spammck)) | Librarian | 4.2.1.7 Track Application Stage · 4.2.1.8 Withdraw an Application · 4.2.2.5 Extend Job Offer |
+| Zhengshi (Peter) Chen ([@lycoris9029](https://github.com/lycoris9029)) | Quality Assurance | 4.2.2.3 Review Submitted Applications · 4.2.2.4 Update Application Stage |
 
-## Repository Layout
+Project board: Jira, https://csi5324.atlassian.net (project KAN).
 
-```
-recruiting-system/
-├── backend/    Spring Boot application (Maven, JUnit)
-├── frontend/   React application (npm)
-├── docs/       Requirements, design models, meeting logs
-├── .gitignore  Excludes build output and secrets from version control
-└── README.md   This file
-```
+## Technology
+
+| Layer | Technology |
+|---|---|
+| Front end | React + TypeScript (Vite), in `frontend/` |
+| Back end | Java 21, Spring Boot 4 (Spring Web MVC), in `backend/` |
+| Persistence | Spring Data JPA (Hibernate), H2 database (in memory by default, file with the `demo` profile) |
+| Security | Spring Security Crypto (BCrypt password hashes), HTTP session for sign-in |
+| Build and tests | Maven Wrapper and JUnit 5 (back end), npm and Vitest (front end) |
 
 ## Prerequisites
 
 | Tool | Version | Check with |
 |---|---|---|
-| JDK | 21 (LTS) | `java -version` |
-| Node.js | 20 or newer | `node -v` |
+| JDK | 21 | `java -version` |
+| Node.js | 20 or newer (with npm) | `node -v` |
 | Git | any recent | `git --version` |
 
-Maven does **not** need to be installed — the backend ships with the Maven Wrapper
-(`mvnw` / `mvnw.cmd`), which downloads the correct Maven version automatically.
+You do not need to install Maven. The back end ships the Maven Wrapper (`mvnw` / `mvnw.cmd`),
+which downloads Maven on first use.
 
-## Getting Started
+## Build, run and test
 
 ```bash
 git clone https://github.com/baylor-csi5324-team3/recruiting-system.git
 cd recruiting-system
 ```
 
-**Backend** (from `backend/`):
+**1. Back end tests** (from `backend/`):
 
 ```bash
-./mvnw spring-boot:run     # Windows: .\mvnw.cmd spring-boot:run
+./mvnw test                      # Windows: .\mvnw.cmd test
 ```
 
-**Backend tests:**
+Expected result: `Tests run: 134, Failures: 0, Errors: 0, Skipped: 0` and `BUILD SUCCESS`.
+
+**2. Back end** (from `backend/`, keep this terminal open):
 
 ```bash
-./mvnw test                # Windows: .\mvnw.cmd test
+./mvnw spring-boot:run           # Windows: .\mvnw.cmd spring-boot:run
 ```
 
-**Frontend** (from `frontend/`):
+The back end listens on http://localhost:8080. The sample data loads a few seconds after start.
+
+**3. Front end** (from `frontend/`, in a second terminal):
 
 ```bash
-npm install
+npm install                      # once
 npm run dev
 ```
 
-## Team
+Open http://localhost:5173. The front end forwards every `/api` request to the back end on
+port 8080, so the back end must already be running. Front end test: `npm test`.
 
-| Name | GitHub | Project Role |
+**4. Sign in.** Click **Sign in** at the top right and use one of the sample accounts.
+All share the development password `Demo-pass-2026` (setting `rams.seed.demo-password`).
+
+| Account | Role | Account id |
 |---|---|---|
-| Luyu Niu | [@LuyuNiu](https://github.com/LuyuNiu) | TBD |
-| TBD | TBD | TBD |
-| TBD | TBD | TBD |
-| TBD | TBD | TBD |
+| admin@example.com (Ada Admin) | Administrator | 1 |
+| recruiter@example.com (Rhea Recruiter, company Baylor Tech) | Recruiter | 2 |
+| applicant@example.com (Peter Chen, two applications in the OFFER stage) | Applicant | 3 |
+| dormant@example.com (Dana Dormant) | Applicant, deactivated: sign-in is refused | 4 |
 
-Every member also serves as a developer/tester for at least three use cases.
+Every start also imports the five postings of `backend/src/main/resources/jobs.csv`
+(three open, one expired, one draft).
 
-## Branching Model
+**Useful extras**
 
-- `main` — always working; changes arrive only through pull requests
-- `feature/<short-description>` — one branch per use case or issue
-- Open a pull request, get at least one teammate's review, then merge
+- H2 console: http://localhost:8080/h2-console (JDBC URL `jdbc:h2:mem:rams`, user `sa`, no password).
+- Keep data between restarts: `./mvnw spring-boot:run -Dspring-boot.run.profiles=demo`
+  (file database in `backend/data/`).
+- Port 8080 or 5173 already in use: stop the other program, or start the back end with
+  `-Dspring-boot.run.arguments=--server.port=8081` and change the proxy target in `frontend/vite.config.ts`.
 
-## Implemented Use Cases (backend)
+## Identity and sign-in
 
-By default, the backend starts with an **in-memory H2 database** seeded with demo users
-and job postings. For the Submit Application persistence demonstration, run the `demo`
-profile to use a **file-backed H2 database** (see instructions below). Since v2.5 the user
-signs in (`POST /api/accounts/login`, session cookie; `GET /api/accounts/me`, `POST /api/accounts/logout`).
-The end points still read the caller from the `X-Applicant-Id`, `X-Recruiter-Id` and
-`X-Administrator-Id` headers, but every identifier must belong to the signed-in user
-(`rams.login.enforce=true`; set it to false to call the API without signing in). The sample
-accounts `admin@`, `recruiter@`, `applicant@` and `dormant@example.com` share the development
-password in `rams.seed.demo-password` (`Demo-pass-2026`). `UserAccount` is an abstract JPA
-superclass of `Applicant`, `Recruiter` and `Administrator`, as in the domain model.
+User Login (`POST /api/accounts/login`) checks the email and password against the BCrypt hash and
+keeps the user in the HTTP session (`GET /api/accounts/me`, `POST /api/accounts/logout`).
+The endpoints read the caller from the `X-Applicant-Id`, `X-Recruiter-Id` and
+`X-Administrator-Id` headers (the account id from the table above). `IdentityCheckInterceptor`
+rejects a request without a session (401) and a request whose id belongs to another user (403).
+The check is on by default (`rams.login.enforce=true`) and off in the tests.
+
+To call the API without signing in, for example from curl or from the two plain pages below:
+
+```bash
+./mvnw spring-boot:run -Dspring-boot.run.arguments=--rams.login.enforce=false
+```
+
+`UserAccount` is an abstract JPA entity (joined inheritance); `Applicant`, `Recruiter` and
+`Administrator` extend it, as in the domain model. Changing a role replaces the account object.
+
+## Use cases and endpoints
 
 | Use case | Owner | Endpoints |
 |---|---|---|
-| UC-01 Search Available Jobs | Luyu Niu | `GET /api/jobs/search` (asks for criteria) · `GET /api/jobs/search/results?keyword=&location=&employmentType=` (open postings, newest first; all parameters optional) |
-| UC-09 Create and Publish a Job Posting | Luyu Niu | `GET /api/postings/new` · `POST /api/postings` (JSON: title, description, location, employmentType, closingDate → DRAFT) · `POST /api/postings/{id}/publish` |
-| UC-15 Manage Accounts and Roles | Luyu Niu | `GET /api/accounts/change` · `GET /api/accounts/lookup?email=` · `PUT /api/accounts/{id}/role-status` (JSON: newRole and/or newStatus, companyName for a new recruiter; a role change replaces the account object) |
-| Submit Job Application | Yuting Mei | `POST /api/applications` (submit an application after validation) · `GET /api/applications?applicantId={id}` (retrieve submitted applications) · `POST /api/applicants/{id}/resumes` (upload a resume) |
+| 4.2.1.1 Search Available Jobs | Luyu Niu | `GET /api/jobs/search` · `GET /api/jobs/search/results?keyword=&location=&employmentType=` (open postings, newest first; all parameters optional; no sign-in needed) |
+| 4.2.1.2 Register Account | Xinyi Chen | `POST /api/accounts/register` |
+| 4.2.1.3 User Login | Xinyi Chen | `POST /api/accounts/login` (JSON: email, password) · `GET /api/accounts/me` · `POST /api/accounts/logout` |
+| 4.2.1.4 Update Applicant Profile | Xinyi Chen | `GET /api/profile` · `PUT /api/profile` (JSON: name, phone, location, headline, bio; `X-Applicant-Id`) |
+| 4.2.1.5 Submit Job Application | Yuting Mei | `GET, POST /api/applicants/{id}/resumes` · `POST /api/applications` · `GET /api/applications?applicantId=` |
+| 4.2.1.6 Save Job Posting | Yuting Mei | `GET, PUT /api/demo/saved/{applicantId}` |
+| 4.2.1.7 Track Application Stage | Spencer Hammack | `GET /api/applications/tracking` · `GET /api/applications/{id}` (`X-Applicant-Id`) |
+| 4.2.1.8 Withdraw an Application | Spencer Hammack | `POST /api/applications/{id}/withdraw` (`X-Applicant-Id`) |
+| 4.2.2.1 Create and Publish a Job Posting | Luyu Niu | `GET /api/postings/new` · `POST /api/postings` (draft) · `POST /api/postings/{id}/publish` (`X-Recruiter-Id`) |
+| 4.2.2.2 Manage Job Posting | Yuting Mei | `PUT /api/postings/{id}` (edit) · `POST /api/postings/{id}/close` (`X-Recruiter-Id`) |
+| 4.2.2.3 Review Submitted Applications | Peter Chen | `GET /api/demo/applications?recruiterId=` · `GET /api/applications/{id}/resume` (`X-Recruiter-Id`) |
+| 4.2.2.4 Update Application Stage | Peter Chen | `PATCH /api/applications/{id}/stage` (JSON: `{"stage": ...}`; `X-Recruiter-Id`) |
+| 4.2.2.5 Extend Job Offer | Spencer Hammack | `POST /api/applications/{id}/extend-offer` (`X-Recruiter-Id`) |
+| 4.2.3.1 Manage Accounts and Roles | Luyu Niu | `GET /api/accounts/change` · `GET /api/accounts/lookup?email=` · `PUT /api/accounts/{id}/role-status` (JSON: newRole and/or newStatus, companyName for a new recruiter; `X-Administrator-Id`) |
 
-Business-rule failures return `400 {"message": ...}` and unknown ids or emails return `404`.
-The code follows the sequence diagrams and the design class diagram in the project
-documentation: one `*Controller` per use case, `JobPostingService` / `AccountService` for the
-rules, and `JobPosting` / `UserAccount` / `Company` / `Recruiter` / `Administrator` as entities.
+Business-rule failures return HTTP 400 with `{"message": ...}`; unknown ids or emails return 404.
+Class and method names follow the sequence diagrams and the design class diagram of the project
+documentation.
 
-## Documentation
+## Plain HTML pages (Submit Application and My Applications)
 
-See [`docs/`](docs/) for requirements, analysis and design models, and meeting logs.
-Documentation is kept in this repository so that it evolves together with the code.
-
-
-## Submit Job Application and My Applications (Yuting Mei)
-
-This implementation reuses the team's existing `Application`, `JobPosting`, and `Applicant`
-entities, services, and persistence layer rather than introducing a separate application
-model. The applicant can select an open job, choose or upload a PDF/DOCX resume, add a cover
-letter, review the application, and confirm submission.
-
-**Submission workflow:**
-
-1. Select an applicant and an open job posting.
-2. Select an existing resume or upload one; optionally enter a cover letter.
-3. Review and confirm the application.
-4. `POST /api/applications` validates resume ownership, job availability/closing date, and
-   the one-application-per-applicant-per-job rule.
-5. The backend saves an `Application` with stage `SUBMITTED`, including a snapshot of the
-   submitted resume and cover letter. A successful response confirms creation.
-6. The **My Applications** page calls `GET /api/applications?applicantId={id}` to read
-   records back from the backend database and display the application stage and details.
-
-| Feature | URL / endpoint | Purpose |
-|---|---|---|
-| Submit Application UI | `http://localhost:8080/submit-application.html` | Select materials, review, and submit |
-| My Applications UI | `http://localhost:8080/applications.html` | Query and display saved applications |
-| Submit API | `POST /api/applications` | Validate and persist a new application |
-| Application history API | `GET /api/applications?applicantId=1` | Read stored records for a selected applicant |
-| Resume upload API | `POST /api/applicants/{id}/resumes` | Upload a PDF/DOCX resume for an applicant |
-| User Login | Xinyi Chen | `POST /api/accounts/login` (JSON: email, password) · `GET /api/accounts/me` · `POST /api/accounts/logout` |
-| Update Applicant Profile | Xinyi Chen | `GET /api/profile` · `PUT /api/profile` (JSON: name, phone, location, headline, bio; `X-Applicant-Id` header) |
-
-### Run and verify database persistence
-
-From `backend/`, start the application using the **demo profile**:
+Two pages served by the back end itself show the Submit Job Application flow without the
+React front end. They do not sign in, so start the back end with the identity check off:
 
 ```bash
-./mvnw spring-boot:run -Dspring-boot.run.profiles=demo
+./mvnw spring-boot:run -Dspring-boot.run.profiles=demo -Dspring-boot.run.arguments=--rams.login.enforce=false
 ```
 
-The demo profile uses file-backed H2 (`backend/data/rams.mv.db` when started from
-`backend/`), unlike the default in-memory H2 configuration. To verify persistence:
+1. Open http://localhost:8080/submit-application.html, choose an applicant and an open posting,
+   select or upload a PDF/DOCX resume, add a cover letter, review and confirm.
+2. Open http://localhost:8080/applications.html to read the stored applications back.
+3. Stop Spring Boot (Ctrl+C), start it again with the same command, and reload the page: the
+   application is still there (file database).
 
-1. Open `http://localhost:8080/submit-application.html` and submit a new application.
-2. Open `http://localhost:8080/applications.html` to retrieve the stored application.
-3. Refresh the page to confirm it is reloaded from the backend, not browser-only state.
-4. Stop Spring Boot with `Ctrl+C`, restart using the **same command and working directory**,
-   and revisit My Applications. The submitted application should still be present.
-5. Optionally inspect `GET /api/applications?applicantId=1` or the H2 console to verify
-   the stored record directly.
+The seed data already has OFFER-stage applications for two postings; use an open posting not yet
+applied to (for example `Frontend Developer`). Applying twice to the same posting is refused.
+Design notes: [`docs/design/SUBMIT_APPLICATION_INTEGRATION.md`](docs/design/SUBMIT_APPLICATION_INTEGRATION.md).
 
-The demo seed data already includes OFFER-stage applications for some postings. Select an
-open job not yet applied to (for the current seed, `Frontend Developer`) to test a new
-submission; submitting the same job again should be rejected.
+## Repository layout
 
-**Current scope and limitations:** these two demonstration pages are served directly by
-Spring Boot on port 8080 and do not sign in; start the back end with `--rams.login.enforce=false`
-to use them. The `frontend/` React workspace signs in through the login end points.
-The sample jobs CSV at `backend/src/main/resources/jobs-sample.csv` is a reference fixture,
-not an automatic CSV importer.
+```
+recruiting-system/
+├── backend/    Spring Boot application (Maven Wrapper, JUnit 5)
+├── frontend/   React application (Vite, Vitest)
+├── docs/       Course material and design notes
+└── README.md   This file
+```
 
-For design decisions, API details, and integration constraints, see
-[`docs/design/SUBMIT_APPLICATION_INTEGRATION.md`](docs/design/SUBMIT_APPLICATION_INTEGRATION.md).
+## Working rules
+
+- `main` always builds and passes the tests; changes arrive only through reviewed pull requests.
+- One feature branch per use case or fix.
+- Releases are tagged on `main` (v1.0 = Iteration 1, v2.0 to v2.5 = Iteration 2).

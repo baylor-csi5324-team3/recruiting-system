@@ -30,7 +30,7 @@ public class Applicant extends UserAccount {
         this.phone = phone;
     }
 
-    /** Manage Accounts and Roles, SD message 3.1.3.2: the same person, now an applicant. */
+    /** Manage Accounts and Roles, SD 6.14 message 3.1.5.2: the same person, now an applicant. */
     public Applicant(UserAccount previous) {
         super(previous, Role.APPLICANT);
     }

@@ -130,7 +130,7 @@ class JobPostingControllerTest {
     }
 
     @Test
-    @DisplayName("a business-rule failure during publication is reported as 400 (extension 6a)")
+    @DisplayName("a business-rule failure during publication is reported as 400 (extension 5a3)")
     void publishProblemReported() throws Exception {
         when(jobPostingService.publish(5L, recruiter)).thenThrow(new ValidationException("The closing date has passed while the posting was a draft. Provide a new closing date."));
 

@@ -67,17 +67,17 @@ public class AccountService {
         validateChange(newRole, newStatus, account);                                   // 3.1.2
         LocalDateTime now = LocalDateTime.now(clock);
         if (newRole != null && newRole != account.getRole()) {
-            return replaceWithRole(account, newRole, newStatus, companyName, admin, now);   // 3.1.3
+            return replaceWithRole(account, newRole, newStatus, companyName, admin, now);   // 3.1.5
         }
-        account.updateRoleAndStatus(null, newStatus, admin, now);                      // status only: 3.1.3.4 on the same object
-        return accounts.save(account);                                                 // and saved in place
+        account.updateRoleAndStatus(null, newStatus, admin, now);                      // 3.1.3 (status change only)
+        return accounts.save(account);                                                 // 3.1.4
     }
 
     /**
      * The role is the subclass of the account, so a new role means a new object for the same person: the email,
      * password hash, name and status are kept, the old object is deleted. This is only possible while nothing in the
      * system depends on the old role (extension 6c). A new recruiter joins the named company, which is found by name
-     * ignoring case or created, as in Register Account. SD 6.14 message 3.1.3 with its sub-messages 3.1.3.1 to 3.1.3.5.
+     * ignoring case or created, as in Register Account. SD 6.14 message 3.1.5 with its sub-messages 3.1.5.1 to 3.1.5.5.
      */
     private UserAccount replaceWithRole(UserAccount account, Role newRole, AccountStatus newStatus, String companyName,
                                         Administrator admin, LocalDateTime time) {
@@ -88,20 +88,20 @@ public class AccountService {
         if (account.getId().equals(admin.getId())) {
             throw new ValidationException("Administrators cannot change their own role.");
         }
-        String dependentRecords = dependentRecords(account);                            // 3.1.3.1
+        String dependentRecords = dependentRecords(account);                            // 3.1.5.1
         if (dependentRecords != null) {
             throw new ValidationException("The role cannot be changed because the account already has "
                     + dependentRecords + ". Deactivate the account instead.");
         }
-        UserAccount replacement = switch (newRole) {                                   // 3.1.3.2 «create»
+        UserAccount replacement = switch (newRole) {                                   // 3.1.5.2 «create»
             case ADMINISTRATOR -> new Administrator(account);
             case APPLICANT -> new Applicant(account);
             case RECRUITER -> new Recruiter(account, companyNamed(company));
         };
-        accounts.delete(account);                                                      // 3.1.3.3
+        accounts.delete(account);                                                      // 3.1.5.3
         accounts.flush();
-        replacement.updateRoleAndStatus(null, newStatus, admin, time);                 // 3.1.3.4
-        return accounts.saveAndFlush(replacement);                                     // 3.1.3.5
+        replacement.updateRoleAndStatus(null, newStatus, admin, time);                 // 3.1.5.4
+        return accounts.saveAndFlush(replacement);                                     // 3.1.5.5
     }
 
     private Company companyNamed(String name) {

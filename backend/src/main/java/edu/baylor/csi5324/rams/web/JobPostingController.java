@@ -24,7 +24,7 @@ import java.util.ArrayList;
 import java.util.List;
 
 /**
- * UC-09 Create and Publish a Job Posting. Controller lifeline of the sequence diagram:
+ * Use case 4.2.2.1 Create and Publish a Job Posting (SD 6.9). Controller lifeline of the sequence diagram:
  * 1 startPosting, 2 submitDetails, 2.1 validate, 2.2 createDraft, 3 publish, 3.1 publish.
  *
  * <p>The recruiter is identified by the {@code X-Recruiter-Id} header (precondition 1 of the use case);
@@ -53,22 +53,22 @@ public class JobPostingController {
                 List.of("title", "description", "location", "employmentType", "closingDate"));
     }
 
-    /** Steps 3 to 5: validates the details and saves the posting as a draft. */
+    /** Steps 3 and 4: validates the details and stores the posting (DRAFT until step 5). */
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public JobPosting submitDetails(@RequestBody PostingDetails details,
                                     @RequestHeader(RECRUITER_HEADER) Long recruiterId) {
         Recruiter recruiter = identifiedRecruiter(recruiterId);
-        validate(details);                                               // 2.1
-        return jobPostingService.createDraft(details, recruiter);        // 2.2
+        validate(details);                                               // 2.2 (2.1 = identifiedRecruiter)
+        return jobPostingService.createDraft(details, recruiter);        // 2.3
     }
 
-    /** Steps 6 to 8: publishes the draft and reports the published posting. */
+    /** Steps 5 to 7: publishes the posting and reports it (SD 3, 3.1 identifies the recruiter). */
     @PostMapping("/{postingId}/publish")
     public JobPosting publish(@PathVariable Long postingId,
                               @RequestHeader(RECRUITER_HEADER) Long recruiterId) {
         Recruiter recruiter = identifiedRecruiter(recruiterId);
-        return jobPostingService.publish(postingId, recruiter);          // 3.1
+        return jobPostingService.publish(postingId, recruiter);          // 3.2
     }
 
     @PutMapping("/{postingId}")

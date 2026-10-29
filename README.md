@@ -8,7 +8,7 @@ recruiting process. Applicants search and apply, recruiters post jobs and move a
 through the stages, administrators manage accounts and roles. Interviews and offer negotiation
 happen outside the system; the system records the resulting stage.
 
-Current release: **v2.5** (Iteration 2): all 14 use cases implemented, 134 back-end tests.
+Current release: **v2.5.2** (Iteration 2): all 14 use cases implemented, 134 back-end tests.
 
 ## Team
 
@@ -37,13 +37,15 @@ Project board: Jira, https://csi5324.atlassian.net (project KAN).
 | Tool | Version | Check with |
 |---|---|---|
 | JDK | 21 | `java -version` |
-| Node.js | 20 or newer (with npm) | `node -v` |
+| Node.js | 22.12 or newer (with npm) | `node -v` |
 | Git | any recent | `git --version` |
 
 You do not need to install Maven. The back end ships the Maven Wrapper (`mvnw` / `mvnw.cmd`),
 which downloads Maven on first use.
 
 ## Build, run and test
+
+Unzip `Team3_Iteration2_Implementation.zip` and open a terminal in the `recruiting-system` folder, or clone the repository:
 
 ```bash
 git clone https://github.com/baylor-csi5324-team3/recruiting-system.git
@@ -92,6 +94,7 @@ Every start also imports the five postings of `backend/src/main/resources/jobs.c
 **Useful extras**
 
 - H2 console: http://localhost:8080/h2-console (JDBC URL `jdbc:h2:mem:rams`, user `sa`, no password).
+- Saved jobs are kept in `backend/data/demo-workspace.json`. For clean data, stop the back end and delete the `backend/data` folder.
 - Keep data between restarts: `./mvnw spring-boot:run -Dspring-boot.run.profiles=demo`
   (file database in `backend/data/`).
 - Port 8080 or 5173 already in use: stop the other program, or start the back end with
@@ -171,4 +174,4 @@ recruiting-system/
 
 - `main` always builds and passes the tests; changes arrive only through reviewed pull requests.
 - One feature branch per use case or fix.
-- Releases are tagged on `main` (v1.0 = Iteration 1, v2.0 to v2.5 = Iteration 2).
+- Releases are tagged on `main` (v1.0 = Iteration 1, v2.0 to v2.5.2 = Iteration 2).

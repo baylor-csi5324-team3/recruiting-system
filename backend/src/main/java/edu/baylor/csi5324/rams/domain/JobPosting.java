@@ -58,7 +58,7 @@ public class JobPosting {
     protected JobPosting() {
     }
 
-    /** «create» JobPosting(details, recruiter, createdAt), SD message 2.2.1 of Create and Publish a Job Posting: a new draft owned by the recruiter's company. */
+    /** «create» JobPosting(details, recruiter, createdAt), SD 6.9 message 2.3.1: a new draft owned by the recruiter's company. */
     public JobPosting(PostingDetails details, Recruiter recruiter, LocalDateTime createdAt) {
         this.title = details.title().trim();
         this.description = details.description().trim();
@@ -92,14 +92,14 @@ public class JobPosting {
         return new PostingSummary(id, title, company.getName(), location, employmentType, closingDate);
     }
 
-    /** SD message 3.1.3 of Create and Publish a Job Posting. */
+    /** SD 6.9 message 3.2.3. */
     public void markPublished(Recruiter recruiter, LocalDateTime postedDate) {
         this.recruiter = recruiter;
         this.postedDate = postedDate;
         this.status = PostingStatus.PUBLISHED;
     }
 
-    /** SD message 3.1.2 of Create and Publish a Job Posting: the posting belongs to the given company. */
+    /** SD 6.9 message 3.2.2: the posting belongs to the given company. */
     public boolean belongsTo(Company other) {
         return company.getId() != null && company.getId().equals(other.getId());
     }

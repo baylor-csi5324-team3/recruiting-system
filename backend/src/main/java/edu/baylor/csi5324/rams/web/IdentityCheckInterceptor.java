@@ -42,7 +42,7 @@ public class IdentityCheckInterceptor implements HandlerInterceptor {
     /** All applicants, used only by the two back-end demo pages: administrators only. */
     private static final String APPLICANT_LIST = "/api/applicants";
     /** All users with their roles, used by the React front end after sign in. */
-    private static final String USER_LIST = "/api/demo/actors";
+    private static final String USER_LIST = "/api/accounts/directory";
 
     private final UserAccountRepository accounts;
 

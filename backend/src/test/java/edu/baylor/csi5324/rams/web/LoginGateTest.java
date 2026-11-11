@@ -82,8 +82,8 @@ class LoginGateTest {
 
     @Test
     void userListsNeedASignedInUser() throws Exception {
-        mvc.perform(get("/api/demo/actors")).andExpect(status().isUnauthorized());
-        mvc.perform(get("/api/demo/actors").session(signInAsAnn())).andExpect(status().isOk());
+        mvc.perform(get("/api/accounts/directory")).andExpect(status().isUnauthorized());
+        mvc.perform(get("/api/accounts/directory").session(signInAsAnn())).andExpect(status().isOk());
         mvc.perform(get("/api/applicants").session(signInAsAnn())).andExpect(status().isForbidden());
     }
 

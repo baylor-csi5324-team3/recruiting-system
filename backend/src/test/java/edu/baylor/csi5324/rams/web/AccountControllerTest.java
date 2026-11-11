@@ -5,7 +5,11 @@ import edu.baylor.csi5324.rams.domain.Administrator;
 import edu.baylor.csi5324.rams.domain.Applicant;
 import edu.baylor.csi5324.rams.domain.Role;
 import edu.baylor.csi5324.rams.domain.UserAccount;
+import edu.baylor.csi5324.rams.domain.Company;
+import edu.baylor.csi5324.rams.domain.Recruiter;
 import edu.baylor.csi5324.rams.repository.AdministratorRepository;
+import edu.baylor.csi5324.rams.repository.UserAccountRepository;
+import edu.baylor.csi5324.rams.service.RegistrationService;
 import edu.baylor.csi5324.rams.service.AccountService;
 import edu.baylor.csi5324.rams.service.NotFoundException;
 import edu.baylor.csi5324.rams.service.ValidationException;
@@ -25,6 +29,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -36,6 +41,8 @@ class AccountControllerTest {
     @Autowired MockMvc mockMvc;
     @MockitoBean AccountService accountService;
     @MockitoBean AdministratorRepository administrators;
+    @MockitoBean UserAccountRepository accounts;
+    @MockitoBean RegistrationService registration;
 
     private final Administrator admin = new Administrator("admin@example.com", "hash", "Ada", AccountStatus.ACTIVE);
 
@@ -43,6 +50,51 @@ class AccountControllerTest {
     void administratorExists() {
         when(administrators.findById(1L)).thenReturn(Optional.of(admin));
         when(administrators.findById(99L)).thenReturn(Optional.empty());
+    }
+
+    @Test
+    @DisplayName("GET /api/accounts lists every user with the role")
+    void listsUsers() throws Exception {
+        when(accounts.findAll()).thenReturn(java.util.List.of(
+                new Applicant("applicant@example.com", "hash", "Ann", AccountStatus.ACTIVE)));
+
+        mockMvc.perform(get("/api/accounts").header(AccountController.ADMIN_HEADER, "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].email").value("applicant@example.com"))
+                .andExpect(jsonPath("$[0].role").value("APPLICANT"))
+                .andExpect(jsonPath("$[0].active").value(true));
+    }
+
+    @Test
+    @DisplayName("GET /api/accounts by an unknown administrator is 404")
+    void listUsersUnknownAdministrator() throws Exception {
+        mockMvc.perform(get("/api/accounts").header(AccountController.ADMIN_HEADER, "99"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    @DisplayName("POST /api/accounts/recruiters creates a recruiter account (201)")
+    void createsRecruiter() throws Exception {
+        when(registration.register(any())).thenReturn(
+                new Recruiter("rita@acme.com", "hash", "Rita", new Company("Acme"), AccountStatus.ACTIVE));
+
+        mockMvc.perform(post("/api/accounts/recruiters").header(AccountController.ADMIN_HEADER, "1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"rita@acme.com\",\"password\":\"Secret-pass-1\",\"fullName\":\"Rita\",\"companyName\":\"Acme\"}"))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.role").value("RECRUITER"))
+                .andExpect(jsonPath("$.company").value("Acme"));
+    }
+
+    @Test
+    @DisplayName("POST /api/accounts/recruiters with an email already in use is 400")
+    void createRecruiterDuplicateEmail() throws Exception {
+        when(registration.register(any())).thenThrow(new ValidationException("An account with that email already exists."));
+
+        mockMvc.perform(post("/api/accounts/recruiters").header(AccountController.ADMIN_HEADER, "1")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"email\":\"rita@acme.com\",\"password\":\"Secret-pass-1\",\"fullName\":\"Rita\",\"companyName\":\"Acme\"}"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test

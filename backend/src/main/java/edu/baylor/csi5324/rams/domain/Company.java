@@ -16,7 +16,7 @@ public class Company {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false, unique = true, columnDefinition = "VARCHAR_IGNORECASE(255)")
+    @Column(nullable = false, unique = true)
     private String name;
 
     protected Company() {

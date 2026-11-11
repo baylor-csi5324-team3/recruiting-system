@@ -31,7 +31,7 @@ public abstract class UserAccount {
     private Long id;
 
     @JsonIgnore
-    @Column(nullable = false, unique = true, columnDefinition = "VARCHAR_IGNORECASE(255)")
+    @Column(nullable = false, unique = true)
     private String email;
 
     @JsonIgnore

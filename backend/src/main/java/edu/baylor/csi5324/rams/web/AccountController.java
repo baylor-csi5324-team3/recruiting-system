@@ -4,7 +4,15 @@ import edu.baylor.csi5324.rams.domain.AccountStatus;
 import edu.baylor.csi5324.rams.domain.Administrator;
 import edu.baylor.csi5324.rams.domain.Role;
 import edu.baylor.csi5324.rams.domain.RoleAndStatus;
+import edu.baylor.csi5324.rams.domain.Recruiter;
+import edu.baylor.csi5324.rams.domain.RegisterAccountRequest;
 import edu.baylor.csi5324.rams.domain.UserAccount;
+import edu.baylor.csi5324.rams.repository.UserAccountRepository;
+import edu.baylor.csi5324.rams.service.RegistrationService;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.ResponseStatus;
+import java.util.Comparator;
 import edu.baylor.csi5324.rams.repository.AdministratorRepository;
 import edu.baylor.csi5324.rams.service.AccountService;
 import edu.baylor.csi5324.rams.service.NotFoundException;
@@ -35,10 +43,46 @@ public class AccountController {
 
     private final AccountService accountService;
     private final AdministratorRepository administrators;
+    private final UserAccountRepository accounts;
+    private final RegistrationService registration;
 
-    public AccountController(AccountService accountService, AdministratorRepository administrators) {
+    public AccountController(AccountService accountService, AdministratorRepository administrators,
+                             UserAccountRepository accounts, RegistrationService registration) {
         this.accountService = accountService;
         this.administrators = administrators;
+        this.accounts = accounts;
+        this.registration = registration;
+    }
+
+    /** The administrator views every registered user with the assigned role and status. */
+    @GetMapping
+    public List<UserRow> listUsers(@RequestHeader(ADMIN_HEADER) Long adminId) {
+        identifiedAdministrator(adminId);
+        return accounts.findAll().stream()
+                .sorted(Comparator.comparing(UserAccount::getId))
+                .map(UserRow::of)
+                .toList();
+    }
+
+    /** Active users with their role and company, for the signed-in front end (names on pages and menus). */
+    @GetMapping("/directory")
+    public List<UserRow> directory() {
+        return accounts.findAll().stream()
+                .filter(UserAccount::isActive)
+                .sorted(Comparator.comparing(UserAccount::getId))
+                .map(UserRow::of)
+                .toList();
+    }
+
+    /** The administrator creates a recruiter account for a company. Same checks as Register Account. */
+    @PostMapping("/recruiters")
+    @ResponseStatus(HttpStatus.CREATED)
+    public UserRow createRecruiter(@RequestBody NewRecruiter request,
+                                   @RequestHeader(ADMIN_HEADER) Long adminId) {
+        identifiedAdministrator(adminId);
+        UserAccount created = registration.register(new RegisterAccountRequest(
+                request.email(), request.password(), Role.RECRUITER, request.companyName(), request.fullName()));
+        return UserRow.of(created);
     }
 
     /** Steps 1 and 2: the administrator starts a change and the system asks which account. */
@@ -76,6 +120,24 @@ public class AccountController {
 
     /** Step 5: a new role, a new status, or both. A missing value keeps the current one; a new recruiter needs a company. */
     public record AccountChange(Role newRole, AccountStatus newStatus, String companyName) {
+    }
+
+    /** Input for a new recruiter account. */
+    public record NewRecruiter(String email, String password, String fullName, String companyName) {
+        @Override
+        public String toString() {
+            return "NewRecruiter[email=" + email + ", password=<redacted>, fullName=" + fullName
+                    + ", companyName=" + companyName + "]";
+        }
+    }
+
+    /** One user in a list: name, email, role, company (recruiters only) and whether the account is active. */
+    public record UserRow(Long id, String name, String email, Role role, String company, boolean active) {
+        static UserRow of(UserAccount a) {
+            String company = a instanceof Recruiter r && r.getCompany() != null ? r.getCompany().getName() : null;
+            return new UserRow(a.getId(), a.getName() == null ? a.getEmail() : a.getName(), a.getEmail(),
+                    a.getRole(), company, a.getStatus() == AccountStatus.ACTIVE);
+        }
     }
 
     /** Steps 4 and 8: what the system reports about an account. */

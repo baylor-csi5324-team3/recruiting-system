@@ -30,7 +30,7 @@ public class ResumeController {
     public record ResumeInfo(Long id, String filename) {}
     public record ApplicantInfo(Long id, String name) {}
 
-    /** Applicant list for the plain submit-application.html page (administrators only while rams.login.enforce is on). */
+    /** Applicant list (administrators only while rams.login.enforce is on). */
     @GetMapping
     public List<ApplicantInfo> listApplicants() {
         return applicants.findAll().stream()

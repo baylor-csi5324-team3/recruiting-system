@@ -15,14 +15,17 @@ includes the Maven Wrapper.
 
 1. Unzip the package (or `git clone https://github.com/baylor-csi5324-team3/recruiting-system.git`)
    and open a terminal in the `recruiting-system` folder.
-2. Start the back end (keep this terminal open):
+2. Database: the team shares one PostgreSQL database on Neon. Copy `backend/.env.example`
+   to `backend/.env` and fill in `DB_URL`, `DB_USER` and `DB_PASSWORD` (ask Luyu for the values;
+   never commit `.env`).
+3. Start the back end (keep this terminal open):
 
    ```bash
    cd backend
    ./mvnw spring-boot:run        # Windows: .\mvnw.cmd spring-boot:run
    ```
 
-3. In a second terminal, start the front end:
+4. In a second terminal, start the front end:
 
    ```bash
    cd frontend
@@ -30,10 +33,10 @@ includes the Maven Wrapper.
    npm run dev
    ```
 
-4. Open http://localhost:5173 and click **Sign in**. All sample accounts use the password
+5. Open http://localhost:5173 and click **Sign in**. All sample accounts use the password
    `Demo-pass-2026`:
    - applicant@example.com (applicant)
    - recruiter@example.com (recruiter)
    - admin@example.com (administrator)
 
-Run the tests with `./mvnw test` in `backend` (134 tests) and `npm test` in `frontend`.
+Run the tests with `./mvnw test` in `backend` (138 tests; they use an in-memory test database, no `.env` needed) and `npm test` in `frontend`.

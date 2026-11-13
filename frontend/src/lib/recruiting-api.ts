@@ -3,7 +3,10 @@ import type { Application, Job, Stage, Role } from '@/features/recruiting/data';
 export type Actor = { id: number; name: string; email: string; role: Role; company: string | null };
 export type UserProfile = { name: string; email: string; phone: string; location: string; headline: string; bio: string; resume: string };
 export type AccountRow = { id: number; name: string; email: string; role: Role; active: boolean };
-export type BackendJob = { id: number; title: string; description: string; companyName: string; location: string; employmentType: string; closingDate: string; postedDate: string | null; status: 'DRAFT' | 'PUBLISHED' | 'CLOSED' };
+/** One user from GET /api/accounts and GET /api/accounts/directory. */
+export type BackendUser = { id: number; name: string; email: string; role: 'APPLICANT' | 'RECRUITER' | 'ADMINISTRATOR'; company: string | null; active: boolean };
+export const fromBackendRole = (r: BackendUser['role']): Role => r === 'RECRUITER' ? 'Recruiter' : r === 'ADMINISTRATOR' ? 'Administrator' : 'Applicant';
+export type BackendJob = { id: number; title: string; description: string; qualifications: string | null; companyName: string; location: string; employmentType: string; closingDate: string; postedDate: string | null; status: 'DRAFT' | 'PUBLISHED' | 'CLOSED' };
 export type BackendApplication = { id: number; jobId: number; name: string; email: string; stage: string; submittedAt: string; resumeFilename: string | null; history: { stage: string; changedAt: string; changedByUserId: number | null }[] };
 
 export async function api<T>(url: string, options?: RequestInit): Promise<T> {
@@ -47,7 +50,7 @@ export function convertJob(job: BackendJob): Job {
     mode: 'Not specified', salary: 'Not disclosed', category: 'Not specified', level: 'Not specified',
     posted: job.postedDate ? new Date(job.postedDate).toLocaleDateString('en-US') : 'Not published',
     closes: job.closingDate, status: job.status === 'DRAFT' ? 'Draft' : closed ? 'Closed' : 'Open',
-    description: job.description
+    description: job.description, qualifications: job.qualifications ?? ''
   };
 }
 export function convertApplication(row: BackendApplication): Application {

@@ -145,4 +145,20 @@ class JobPostingServiceTest {
         assertThrows(ValidationException.class, () -> service.publish(draft.getId(), recruiter));
         assertThrows(NotFoundException.class, () -> service.publish(999_999L, recruiter));
     }
+
+    @Test
+    @DisplayName("a recruiter of another company cannot edit or close the posting; the owner can")
+    void onlyOwnerEditsOrCloses() {
+        JobPosting draft = service.createDraft(new PostingDetails("Data Analyst", "desc", "Waco, TX", "FULL_TIME", TODAY.plusDays(20)), recruiter);
+        service.publish(draft.getId(), recruiter);
+        PostingDetails edited = new PostingDetails("Senior Data Analyst", "desc", "Waco, TX", "FULL_TIME", TODAY.plusDays(30));
+
+        assertThrows(ValidationException.class, () -> service.updateDetails(draft.getId(), edited, otherRecruiter));
+        assertThrows(ValidationException.class, () -> service.close(draft.getId(), otherRecruiter));
+        assertEquals("Data Analyst", postings.findById(draft.getId()).orElseThrow().getTitle());
+        assertEquals(PostingStatus.PUBLISHED, postings.findById(draft.getId()).orElseThrow().getStatus());
+
+        service.updateDetails(draft.getId(), edited, recruiter);
+        assertEquals("Senior Data Analyst", postings.findById(draft.getId()).orElseThrow().getTitle());
+    }
 }

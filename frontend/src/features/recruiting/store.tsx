@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useMemo, useState, type ReactNode
 import { toast } from 'sonner';
 import type { Application, Job, Role, Stage } from './data';
 import { api, bodyJson, convertApplication, convertJob, toBackendStage, toBackendType,
-  type Actor, type AccountRow, type BackendApplication, type BackendJob, type UserProfile } from '@/lib/recruiting-api';
+  fromBackendRole, type Actor, type AccountRow, type BackendUser, type BackendApplication, type BackendJob, type UserProfile } from '@/lib/recruiting-api';
 
 const blankProfile: UserProfile = { name: '', email: '', phone: '', location: '', headline: '', bio: '', resume: '' };
 
@@ -37,7 +37,7 @@ function useRecruitingState() {
   useEffect(() => {
     if (!signedIn) { setActors([]); return; }
     let live = true;
-    api<Actor[]>('/api/demo/actors').then(rows => { if (live) setActors(rows); }).catch(() => {});
+    api<BackendUser[]>('/api/accounts/directory').then(rows => { if (live) setActors(rows.map(u => ({ id: u.id, name: u.name, email: u.email, role: fromBackendRole(u.role), company: u.company }))); }).catch(() => {});
     return () => { live = false; };
   }, [signedIn?.id]);
 
@@ -69,12 +69,12 @@ function useRecruitingState() {
     setLoading(true); setError('');
     try {
       const qs = role === 'Recruiter' && actor ? `?recruiterId=${actor.id}` : '';
-      const jobsRequest = api<BackendJob[]>('/api/demo/jobs' + qs);
+      const jobsRequest = api<BackendJob[]>('/api/jobs' + qs);
       const appsRequest = role === 'Applicant' && actor ? api<BackendApplication[]>(`/api/demo/applications?applicantId=${actor.id}`)
         : role === 'Recruiter' && actor ? api<BackendApplication[]>(`/api/demo/applications?recruiterId=${actor.id}`) : Promise.resolve([]);
       const profileRequest = applicantId !== null ? loadProfile(applicantId) : Promise.resolve(blankProfile);
       const savedRequest = applicantId !== null ? api<number[]>(`/api/demo/saved/${applicantId}`) : Promise.resolve([]);
-      const accountsRequest = role === 'Administrator' && actor ? api<AccountRow[]>(`/api/demo/accounts?administratorId=${actor.id}`) : Promise.resolve([]);
+      const accountsRequest = role === 'Administrator' && actor ? api<BackendUser[]>('/api/accounts', { headers: { 'X-Administrator-Id': String(actor.id) } }).then(rows => rows.map((u): AccountRow => ({ id: u.id, name: u.name, email: u.email, role: fromBackendRole(u.role), active: u.active }))) : Promise.resolve([]);
       const [bj,ba,p,sv,ac] = await Promise.all([jobsRequest,appsRequest,profileRequest,savedRequest,accountsRequest]);
       setJobs(bj.map(convertJob)); setApplications(ba.map(convertApplication));
       setProfile(p); setSaved(sv); setAccounts(ac);
@@ -161,7 +161,7 @@ function useRecruitingState() {
   const saveJob = async (job: Job) => {
     if (role !== 'Recruiter' || !actor) { toast.error('Choose a recruiter workspace'); return false; }
     try {
-      const details = { title:job.title, description:job.description, location:job.location,
+      const details = { title:job.title, description:job.description, qualifications:job.qualifications, location:job.location,
         employmentType:toBackendType(job.type), closingDate:job.closes };
       const header = {'X-Recruiter-Id':String(actor.id)};
       const existing = jobs.find(x => x.id === job.id);
@@ -192,6 +192,15 @@ function useRecruitingState() {
       }), 'Account updated'); return true;
     } catch (e) { toast.error(String(e)); return false; }
   };
+  /** The administrator creates a recruiter account (POST /api/accounts/recruiters). */
+  const createRecruiter = async (input: { fullName:string; email:string; password:string; companyName:string }) => {
+    if (role !== 'Administrator' || !actor) return false;
+    try {
+      await after(() => api('/api/accounts/recruiters', { method:'POST',
+        ...bodyJson(input, {'X-Administrator-Id':String(actor.id)}) }), 'Recruiter account created');
+      return true;
+    } catch (e) { toast.error(e instanceof Error ? e.message : String(e)); return false; }
+  };
   const uploadProfileResume = async (file: File) => {
     if (role !== 'Applicant' || !actor) return false;
     if (file.size===0 || file.size>5*1024*1024 || !/\.(pdf|docx)$/i.test(file.name)) { toast.error('PDF or DOCX, maximum 5 MB'); return false; }
@@ -214,7 +223,7 @@ function useRecruitingState() {
   };
   return { role, setRole, actor, actors, applicantId, recruiterId, administratorId,
     signedIn, signIn, signOut, jobs, saved, toggleSave, applications, submit, updateStage,
-    accounts, profile, setProfile, saveProfile, uploadProfileResume, saveJob, closeJob, updateAccount,
+    accounts, profile, setProfile, saveProfile, uploadProfileResume, saveJob, closeJob, updateAccount, createRecruiter,
     audit, record, loading, error, refresh };
 }
 type RecruitingState = ReturnType<typeof useRecruitingState>;

@@ -72,7 +72,7 @@ class JobPostingControllerTest {
     void asksForDetails() throws Exception {
         mockMvc.perform(get("/api/postings/new"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.fields.length()").value(5));
+                .andExpect(jsonPath("$.fields.length()").value(6));
     }
 
     @Test

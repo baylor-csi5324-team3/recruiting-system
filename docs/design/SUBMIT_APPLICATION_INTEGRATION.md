@@ -4,28 +4,17 @@ This integration extends the **team's existing** `edu.baylor.csi5324.rams` packa
 
 ## Flow
 
-1. Open `/submit-application.html` on port 8080; choose a seeded applicant and an open job.
+1. In the React front end (http://localhost:5173), sign in as an applicant and open an open job.
 2. Upload or select a PDF/DOCX resume; optionally write a cover letter.
 3. Review, then confirm. `POST /api/applications` validates the applicant, resume ownership, job status/deadline, and duplicate rule.
 4. The service saves a **new `Application`** with stage `SUBMITTED` and a snapshot of the resume and cover letter.
-5. Open `/applications.html`. It calls `GET /api/applications?applicantId=<id>` and re-reads the same `job_applications` records from the database.
+5. Open My applications. It calls `GET /api/applications?applicantId=<id>` and re-reads the same `job_applications` records from the database.
 
 The existing Offer Response implementation continues to operate on the same `Application` table. Older seeded OFFER applications may have no resume snapshot, so the UI displays `(legacy record)` for them.
 
 ## Run
 
-From `backend/`:
-
-```bash
-./mvnw spring-boot:run -Dspring-boot.run.profiles=demo
-```
-
-The `demo` profile uses a **file-backed** H2 database (`backend/data/rams.mv.db`) so submissions can survive a server restart. The default profile remains the team's existing **in-memory** H2 database. Keep the same working directory when restarting. The dev seeder is idempotent if accounts already exist.
-
-- Submit UI: http://localhost:8080/submit-application.html
-- History UI: http://localhost:8080/applications.html
-- GET API: http://localhost:8080/api/applications?applicantId=1
-- H2 console: http://localhost:8080/h2-console (demo JDBC URL `jdbc:h2:file:./data/rams`, user `sa`, blank password)
+See the README: create `backend/.env` with the team PostgreSQL values, run `./mvnw spring-boot:run` in `backend/` and `npm run dev` in `frontend/`. Data stays in PostgreSQL after a restart.
 
 The seeded applicant already has two OFFER applications for the first two jobs; to demonstrate a **new** successful submission, choose the third open posting (`Frontend Developer`) and upload a resume. Submitting the same job again should be rejected.
 

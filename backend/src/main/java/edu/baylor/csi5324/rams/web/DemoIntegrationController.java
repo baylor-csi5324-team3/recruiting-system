@@ -15,7 +15,8 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.*;
 
-/** Read models and small extras for the React front end (actors, jobs, applications, accounts, saved jobs).
+/** Read models and small extras for the React front end (applications, saved jobs).
+ * Jobs: JobListController. Users and accounts: AccountController.
  * The applicant profile is served by ApplicantProfileController (Update Applicant Profile).
  * Existing application, posting and account business rules remain in their services. */
 @RestController
@@ -46,42 +47,8 @@ public class DemoIntegrationController {
         this.mapper = mapper;
     }
 
-    public record Actor(Long id, String name, String email, String role, String company) {}
-    public record JobView(Long id, String title, String description, String companyName, String location,
-            String employmentType, LocalDate closingDate, LocalDateTime postedDate, String status) {}
     public record ApplicationView(Long id, Long jobId, String name, String email, String stage,
             LocalDateTime submittedAt, String resumeFilename, List<StageRecord> history) {}
-    public record AccountView(Long id, String name, String email, String role, boolean active) {}
-
-    @GetMapping("/actors")
-    public List<Actor> actors() {
-        List<Actor> result = new ArrayList<>();
-        for (Applicant a: applicants.findAll()) {
-            if (a.getRole()!=Role.APPLICANT || a.getStatus()!=AccountStatus.ACTIVE) continue;
-            result.add(new Actor(a.getId(), a.getName(), a.getEmail(), "Applicant", null));
-        }
-        for (Recruiter a: recruiters.findAll()) {
-            if (a.getRole()!=Role.RECRUITER || a.getStatus()!=AccountStatus.ACTIVE) continue;
-            result.add(new Actor(a.getId(), a.getName(), a.getEmail(), "Recruiter", a.getCompany().getName()));
-        }
-        for (Administrator a: admins.findAll()) {
-            if (a.getRole()==Role.ADMINISTRATOR && a.getStatus()==AccountStatus.ACTIVE) result.add(new Actor(a.getId(), a.getName(), a.getEmail(), "Administrator", null));
-        }
-        return result;
-    }
-
-    private JobView job(JobPosting p) {
-        return new JobView(p.getId(), p.getTitle(), p.getDescription(), p.getCompany().getName(),
-                p.getLocation(), p.getEmploymentType(), p.getClosingDate(), p.getPostedDate(), p.getStatus().name());
-    }
-
-    @GetMapping("/jobs")
-    public List<JobView> listJobs(@RequestParam(required = false) Long recruiterId) {
-        Recruiter recruiter = recruiterId == null ? null : requireRecruiter(recruiterId);
-        return jobs.findAll().stream()
-                .filter(p -> p.getStatus() != PostingStatus.DRAFT || (recruiter != null && p.belongsTo(recruiter.getCompany())))
-                .map(this::job).toList();
-    }
 
     @GetMapping("/applications")
     public List<ApplicationView> listApplications(@RequestParam(required = false) Long applicantId,
@@ -96,25 +63,6 @@ public class DemoIntegrationController {
                         a.getApplicant().getEmail(), a.getStage().name(), a.getSubmitDate(),
                         a.getResumeFilename(), a.getStageHistory())).toList();
     }
-
-    @GetMapping("/accounts")
-    public List<AccountView> listAccounts(@RequestParam Long administratorId) {
-        requireAdmin(administratorId);
-        Map<Long,String> names = new HashMap<>();
-        for (Actor a : actors()) {
-            String email = a.email();
-            accounts.findByEmailIgnoreCase(email).ifPresent(ac -> names.put(ac.getId(), a.name()));
-        }
-        return accounts.findAll().stream().map(a -> new AccountView(a.getId(),
-                names.getOrDefault(a.getId(), a.getEmail()), a.getEmail(),
-                role(a.getRole()), a.getStatus() == AccountStatus.ACTIVE)).toList();
-    }
-    private String role(Role r) { return switch (r) {
-        case APPLICANT -> "Applicant";
-        case RECRUITER -> "Recruiter";
-        case ADMINISTRATOR -> "Administrator";
-    }; }
-
 
     @GetMapping("/saved/{id}")
     public List<Long> saved(@PathVariable Long id) {

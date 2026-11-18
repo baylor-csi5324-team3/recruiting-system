@@ -49,8 +49,8 @@ public class JobPostingController {
     /** Steps 1 and 2: the recruiter starts a posting and the system asks for the details. */
     @GetMapping("/new")
     public Prompt startPosting() {
-        return new Prompt("Provide the title, description, location, employment type and closing date.",
-                List.of("title", "description", "location", "employmentType", "closingDate"));
+        return new Prompt("Provide the title, description, qualifications, location, employment type and closing date.",
+                List.of("title", "description", "qualifications", "location", "employmentType", "closingDate"));
     }
 
     /** Steps 3 and 4: validates the details and stores the posting (DRAFT until step 5). */
@@ -94,6 +94,9 @@ public class JobPostingController {
         if (details.closingDate() == null) missing.add("closingDate");
         if (!missing.isEmpty()) {
             throw new ValidationException("Missing: " + String.join(", ", missing) + ". Provide the missing detail(s).");
+        }
+        if (details.qualifications() != null && details.qualifications().length() > 2000) {
+            throw new ValidationException("Qualifications must be at most 2000 characters.");
         }
         if (!details.closingDate().isAfter(LocalDate.now(clock))) {
             throw new ValidationException("The closing date must be later than today. Provide a later closing date.");

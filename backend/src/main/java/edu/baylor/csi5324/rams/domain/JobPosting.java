@@ -30,6 +30,10 @@ public class JobPosting {
     @Column(nullable = false, length = 4000)
     private String description;
 
+    /** Skills or experience the job asks for; empty for older postings. */
+    @Column(length = 2000)
+    private String qualifications;
+
     @Column(nullable = false)
     private String location;
 
@@ -65,6 +69,7 @@ public class JobPosting {
         this.location = details.location().trim();
         this.employmentType = details.employmentType().trim().toUpperCase();
         this.closingDate = details.closingDate();
+        this.qualifications = clean(details.qualifications());
         this.recruiter = recruiter;
         this.company = recruiter.getCompany();
         this.createdAt = createdAt;
@@ -109,6 +114,15 @@ public class JobPosting {
         title = d.title().trim(); description = d.description().trim();
         location = d.location().trim(); employmentType = d.employmentType().trim().toUpperCase();
         closingDate = d.closingDate();
+        qualifications = clean(d.qualifications());
+    }
+
+    private static String clean(String text) {
+        return text == null || text.isBlank() ? null : text.trim();
+    }
+
+    public String getQualifications() {
+        return qualifications;
     }
     public void closePosting() {
         if (status != PostingStatus.PUBLISHED) throw new IllegalStateException("Only published jobs can be closed.");

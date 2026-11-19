@@ -11,6 +11,7 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.transaction.annotation.Transactional;
 import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
@@ -37,6 +38,7 @@ public class ResumeController {
                 .map(a -> new ApplicantInfo(a.getId(), a.getName())).toList();
     }
 
+    @Transactional(readOnly = true)
     @GetMapping("/{id}/resumes")
     public List<ResumeInfo> listResumes(@PathVariable Long id) {
         if (!applicants.existsById(id)) throw new NotFoundException("Applicant not found.");

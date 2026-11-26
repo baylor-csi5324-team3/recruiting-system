@@ -6,6 +6,7 @@ import {
   bodyJson,
   convertApplication,
   convertJob,
+  convertSavedJob,
   toBackendStage,
   toBackendType,
   fromBackendRole,
@@ -14,6 +15,7 @@ import {
   type BackendUser,
   type BackendApplication,
   type BackendJob,
+  type BackendSavedJob,
   type UserProfile,
   loadApplicantApplications
 } from '@/lib/recruiting-api';
@@ -34,7 +36,19 @@ function useRecruitingState() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [applications, setApplications] = useState<Application[]>([]);
   const [accounts, setAccounts] = useState<AccountRow[]>([]);
-  const [saved, setSaved] = useState<number[]>([]);
+
+  const [savedJobs, setSavedJobs] = useState<BackendSavedJob[]>([]);
+
+  const saved = useMemo(
+      () => savedJobs.map(row => row.jobPostingId),
+      [savedJobs]
+  );
+
+  const savedJobDetails = useMemo(
+      () => savedJobs.map(convertSavedJob),
+      [savedJobs]
+  );
+
   const [profile, setProfile] = useState<UserProfile>(blankProfile);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -95,15 +109,19 @@ function useRecruitingState() {
                   : Promise.resolve([] as BackendApplication[]);
 
       const profileRequest = applicantId !== null ? loadProfile(applicantId) : Promise.resolve(blankProfile);
-      const savedRequest = applicantId !== null ? api<number[]>(`/api/demo/saved/${applicantId}`) : Promise.resolve([]);
+
+      const savedRequest = applicantId !== null
+          ? api<BackendSavedJob[]>(`/api/applicants/${applicantId}/saved-jobs`)
+          : Promise.resolve([]);
+
       const accountsRequest = role === 'Administrator' && actor ? api<BackendUser[]>('/api/accounts', { headers: { 'X-Administrator-Id': String(actor.id) } }).then(rows => rows.map((u): AccountRow => ({ id: u.id, name: u.name, email: u.email, role: fromBackendRole(u.role), active: u.active }))) : Promise.resolve([]);
       const [bj,ba,p,sv,ac] = await Promise.all([jobsRequest,appsRequest,profileRequest,savedRequest,accountsRequest]);
       setJobs(bj.map(convertJob)); setApplications(ba.map(convertApplication));
-      setProfile(p); setSaved(sv); setAccounts(ac);
+      setProfile(p); setSavedJobs(sv); setAccounts(ac);
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Failed to load backend data';
       setError(msg); toast.error(msg);
-      setJobs([]); setApplications([]); setAccounts([]); setSaved([]); setProfile(blankProfile);
+      setJobs([]); setApplications([]); setAccounts([]); setSavedJobs([]); setProfile(blankProfile);
     } finally { setLoading(false); }
   };
   useEffect(() => { void refresh(); }, [actors, role, signedIn]);
@@ -113,12 +131,39 @@ function useRecruitingState() {
     toast.success(message);
     return result;
   }
+
   const toggleSave = async (id: number) => {
-    if (role !== 'Applicant' || applicantId === null) { toast.error('Choose an applicant workspace'); return; }
-    try { await after(() => api<number[]>(`/api/demo/saved/${applicantId}`, {
-      method: 'PUT', ...bodyJson(saved.includes(id) ? saved.filter(x=>x!==id) : [...saved,id])
-    }), 'Saved jobs updated'); } catch (e) { toast.error(String(e)); }
+    if (role !== 'Applicant' || applicantId === null) {
+      toast.error('Choose an applicant workspace');
+      return;
+    }
+
+    try {
+      if (saved.includes(id)) {
+        await after(
+            () => api<void>(
+                `/api/applicants/${applicantId}/saved-jobs/${id}`,
+                { method: 'DELETE' }
+            ),
+            'Job removed from saved jobs'
+        );
+      } else {
+        await after(
+            () => api<BackendSavedJob>(
+                `/api/applicants/${applicantId}/saved-jobs`,
+                {
+                  method: 'POST',
+                  ...bodyJson({ jobPostingId: id })
+                }
+            ),
+            'Job saved successfully'
+        );
+      }
+    } catch (e) {
+      toast.error(String(e));
+    }
   };
+
   const submit = async (job: Job, file: File | null, cover: string): Promise<boolean> => {
     if (!actor || role !== 'Applicant' || !file) { toast.error('Select a resume and applicant'); return false; }
     if (file.size === 0 || file.size > 5 * 1024 * 1024 || !/\.(pdf|docx)$/i.test(file.name)) {
@@ -244,7 +289,7 @@ function useRecruitingState() {
     } catch (e) { toast.error(String(e)); return false; }
   };
   return { role, setRole, actor, actors, applicantId, recruiterId, administratorId,
-    signedIn, signIn, signOut, jobs, saved, toggleSave, applications, submit, updateStage,
+    signedIn, signIn, signOut, jobs, saved, savedJobDetails, toggleSave, applications, submit, updateStage,
     accounts, profile, setProfile, saveProfile, uploadProfileResume, saveJob, closeJob, updateAccount, createRecruiter,
     audit, record, loading, error, refresh };
 }

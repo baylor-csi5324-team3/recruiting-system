@@ -19,17 +19,48 @@ export function JobCard({job,onSelect}:{job:Job;onSelect:(job:Job)=>void}) {
   return <article className="job-card">
     <div className="flex items-center justify-between">
       <div className="flex items-center gap-3"><CompanyLogo job={job}/><div><p className="text-xs font-semibold">{job.company}</p><p className="mt-1 text-[10px] text-muted-foreground">{job.posted}</p></div></div>
-      {role === 'Applicant' && <Button variant="ghost" size="icon" aria-label="Save job" onClick={()=>{void toggleSave(job.id);}}><Bookmark className="size-[17px]" fill={saved.includes(job.id)?'currentColor':'none'}/></Button>}
+
+      {role === 'Applicant' && (
+          <Button
+              variant="ghost"
+              size="icon"
+              aria-label={saved.includes(job.id) ? 'Remove saved job' : 'Save job'}
+              disabled={job.status !== 'Open' && !saved.includes(job.id)}
+              onClick={() => { void toggleSave(job.id); }}
+          >
+            <Bookmark
+                className="size-[17px]"
+                fill={saved.includes(job.id) ? 'currentColor' : 'none'}
+            />
+          </Button>
+      )}
+
     </div>
     <Button variant="link" onClick={()=>onSelect(job)} className="job-title mt-5 h-auto justify-start whitespace-normal p-0 text-left text-[16px] font-semibold text-foreground no-underline hover:no-underline">{job.title}</Button>
     <div className="mt-2.5 flex items-center gap-1.5 text-[11px] text-muted-foreground"><MapPin className="size-3"/>{job.location}</div>
-    <div className="mt-4 flex flex-wrap gap-1.5"><span className="tag">{job.type}</span>{job.mode !== 'Not specified' && <span className="tag">{job.mode}</span>}</div>
+
+    <div className="mt-4 flex flex-wrap gap-1.5">
+      <span className="tag">{job.type}</span>
+      {job.mode !== 'Not specified' && (
+          <span className="tag">{job.mode}</span>
+      )}
+      {job.status !== 'Open' && (
+          <span className={`status ${job.status.toLowerCase()}`}>
+      {job.status}
+    </span>
+      )}
+    </div>
+
     <div className="job-card-footer mt-5 flex items-center justify-between gap-2 border-t pt-4"><div><p className="text-xs font-semibold">{job.salary}</p><p className="mt-1 text-[9px] text-muted-foreground">Closes {formatDate(job.closes)}</p></div><Button variant="ghost" size="sm" onClick={()=>onSelect(job)} className="h-8 gap-1.5 px-1 text-[11px] text-primary">View job <ArrowUpRight className="size-3.5"/></Button></div>
   </article>;
 }
 
+
 export function ExploreJobs({savedOnly=false}:{savedOnly?:boolean}) {
-  const {jobs,saved,role,loading,error,actor} = useRecruiting();
+  const {jobs,savedJobDetails,role,loading,error,actor} = useRecruiting();
+
+  const sourceJobs = savedOnly ? savedJobDetails : jobs;
+
   const [keyword,setKeyword]=useState('');
   const [search,setSearch]=useState('');
   const [location,setLocation]=useState('');
@@ -52,14 +83,36 @@ export function ExploreJobs({savedOnly=false}:{savedOnly?:boolean}) {
       setSearchError(e instanceof Error ? e.message : 'The search could not be run.');
     }
   };
-  const options = useMemo(()=>[...new Set(jobs.map(j=>j.location))].sort(),[jobs]);
-  const types = useMemo(()=>[...new Set(jobs.map(j=>j.type))].sort(),[jobs]);
-  const matched = useMemo(()=>jobs.filter(j=>
-    (savedOnly ? saved.includes(j.id) : (resultIds ? resultIds.includes(j.id) : j.status === 'Open')) &&
-    (!savedOnly || !search || `${j.title} ${j.company}`.toLowerCase().includes(search.toLowerCase())) &&
-    (!location || j.location===location) && (!type || j.type===type))
-    .sort((a,b)=>sort==='closing'?a.closes.localeCompare(b.closes):(resultIds&&!savedOnly?resultIds.indexOf(a.id)-resultIds.indexOf(b.id):b.id-a.id)),
-  [jobs,saved,savedOnly,search,location,type,sort,resultIds]);
+
+  const options = useMemo(
+      () => [...new Set(sourceJobs.map(j => j.location))].sort(),
+      [sourceJobs]
+  );
+
+  const types = useMemo(
+      () => [...new Set(sourceJobs.map(j => j.type))].sort(),
+      [sourceJobs]
+  );
+
+
+  const matched = useMemo(() => sourceJobs.filter(j =>
+          (savedOnly || (resultIds
+              ? resultIds.includes(j.id)
+              : j.status === 'Open')) &&
+          (!savedOnly || !search ||
+              `${j.title} ${j.company}`.toLowerCase().includes(search.toLowerCase())) &&
+          (!location || j.location === location) &&
+          (!type || j.type === type))
+          .sort((a, b) =>
+              sort === 'closing'
+                  ? a.closes.localeCompare(b.closes)
+                  : resultIds && !savedOnly
+                      ? resultIds.indexOf(a.id) - resultIds.indexOf(b.id)
+                      : b.id - a.id
+          ),
+      [sourceJobs, savedOnly, search, location, type, sort, resultIds]
+  );
+
   const openCount=jobs.filter(j=>j.status==='Open').length;
   return <div className={`opportunities-layout ${savedOnly?'shortlist-layout':'explore-layout'}`}>
     {savedOnly ? <div className="mb-7"><p className="mb-2 text-xs text-primary">YOUR SHORTLIST</p><h1 className="page-heading">Saved opportunities</h1><p className="mt-2 text-sm text-muted-foreground">Saved jobs are loaded from the server.</p></div>
@@ -100,7 +153,18 @@ function JobDetails({job,onClose}:{job:Job|null;onClose:()=>void}) {
     <DialogDescription>{job.location} · {job.type}</DialogDescription>
     {step===0 ? <><div className="flex gap-2"><span className="tag">{job.salary}</span><span className={`status ${job.status.toLowerCase()}`}>{job.status}</span></div>
       <section className="mt-3"><h3 className="section-heading">About the role</h3><p className="mt-3 text-sm leading-7 text-muted-foreground">{job.description}</p>{job.qualifications&&<><h3 className="section-heading mt-5">Qualifications</h3><p className="mt-3 whitespace-pre-line text-sm leading-7 text-muted-foreground">{job.qualifications}</p></>}<p className="mt-5 flex items-center gap-2 text-xs text-muted-foreground"><Clock className="size-4"/>Applications close {formatDate(job.closes)}</p></section>
-      <div className="mt-4 flex flex-wrap gap-3 border-t pt-5"><Button disabled={applied || job.status!=='Open' || !actor || role!=='Applicant'} onClick={()=>{setFile(null);setStep(1);}}>{applied?<><Check/>Already applied</>:job.status!=='Open'?'Applications closed':<>Apply now<ArrowUpRight/></>}</Button>{role==='Applicant'&&<Button variant="outline" onClick={()=>{void toggleSave(job.id);}}><Bookmark/>{saved.includes(job.id)?'Saved':'Save job'}</Button>}</div>
+      <div className="mt-4 flex flex-wrap gap-3 border-t pt-5"><Button disabled={applied || job.status!=='Open' || !actor || role!=='Applicant'} onClick={()=>{setFile(null);setStep(1);}}>{applied?<><Check/>Already applied</>:job.status!=='Open'?'Applications closed':<>Apply now<ArrowUpRight/></>}</Button>
+        {role === 'Applicant' && (
+            <Button
+                variant="outline"
+                disabled={job.status !== 'Open' && !saved.includes(job.id)}
+                onClick={() => { void toggleSave(job.id); }}
+            >
+              <Bookmark />
+              {saved.includes(job.id) ? 'Remove saved job' : 'Save job'}
+            </Button>
+        )}
+      </div>
     </> : <form className="space-y-4" onSubmit={e=>{void onSubmit(e);}}><div className="flex items-center gap-3 border-y py-3 text-xs"><span className={step===1?'font-semibold text-primary':'text-muted-foreground'}>1. Application materials</span><ArrowRight className="size-3"/><span className={step===2?'font-semibold text-primary':'text-muted-foreground'}>2. Review & submit</span></div>
       {step===1?<><div className="grid grid-cols-1 gap-3 sm:grid-cols-2"><label className="field">Full name<input readOnly value={profile.name}/></label><label className="field">Email<input readOnly value={profile.email}/></label></div>
         <div className="field">Resume<label className="cursor-pointer rounded-md border border-dashed p-5 text-center"><Upload className="mx-auto mb-2 size-5 text-primary"/><span className="block text-xs">{file?.name||'Choose resume'}</span><span className="text-[10px] text-muted-foreground">PDF or DOCX · max 5 MB</span><input type="file" className="sr-only" accept=".pdf,.docx" aria-label="Upload application resume" onChange={e=>{const f=e.target.files?.[0];if(!f)return;if(!/\.(pdf|docx)$/i.test(f.name)||f.size===0||f.size>5*1024*1024){toast.error('Invalid resume (max 5 MB)');setFile(null);return;}setFile(f);}}/></label></div><label className="field">Cover letter (optional)<textarea value={cover} onChange={e=>setCover(e.target.value)}/></label>

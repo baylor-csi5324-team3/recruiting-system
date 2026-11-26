@@ -7,6 +7,23 @@ export type AccountRow = { id: number; name: string; email: string; role: Role; 
 export type BackendUser = { id: number; name: string; email: string; role: 'APPLICANT' | 'RECRUITER' | 'ADMINISTRATOR'; company: string | null; active: boolean };
 export const fromBackendRole = (r: BackendUser['role']): Role => r === 'RECRUITER' ? 'Recruiter' : r === 'ADMINISTRATOR' ? 'Administrator' : 'Applicant';
 export type BackendJob = { id: number; title: string; description: string; qualifications: string | null; companyName: string; location: string; employmentType: string; closingDate: string; postedDate: string | null; status: 'DRAFT' | 'PUBLISHED' | 'CLOSED' };
+
+export type BackendSavedJob = {
+  savedJobId: number;
+  jobPostingId: number;
+  jobTitle: string;
+  companyName: string;
+  location: string;
+  employmentType: string;
+  description: string;
+  qualifications: string | null;
+  postedDate: string | null;
+  status: 'DRAFT' | 'PUBLISHED' | 'CLOSED';
+  closingDate: string;
+  savedAt: string;
+  open: boolean;
+};
+
 export type BackendApplication = { id: number; jobId: number; name: string; email: string; stage: string; submittedAt: string; resumeFilename: string | null; history: { stage: string; changedAt: string; changedByUserId: number | null }[] };
 
 export async function api<T>(url: string, options?: RequestInit): Promise<T> {
@@ -22,6 +39,10 @@ export async function api<T>(url: string, options?: RequestInit): Promise<T> {
     } catch { /* not a JSON API error */ }
     throw new Error(message);
   }
+  if (res.status === 204) {
+    return undefined as T;
+  }
+
   return res.json() as Promise<T>;
 }
 
@@ -53,6 +74,29 @@ export function convertJob(job: BackendJob): Job {
     description: job.description, qualifications: job.qualifications ?? ''
   };
 }
+
+export function convertSavedJob(row: BackendSavedJob): Job {
+  const job = convertJob({
+    id: row.jobPostingId,
+    title: row.jobTitle,
+    description: row.description,
+    qualifications: row.qualifications,
+    companyName: row.companyName,
+    location: row.location,
+    employmentType: row.employmentType,
+    closingDate: row.closingDate,
+    postedDate: row.postedDate,
+    status: row.status
+  });
+
+  return {
+    ...job,
+    status: row.status === 'DRAFT'
+        ? 'Draft'
+        : row.open ? 'Open' : 'Closed'
+  };
+}
+
 export function convertApplication(row: BackendApplication): Application {
   return {
     id: row.id, jobId: row.jobId, name: row.name, email: row.email,

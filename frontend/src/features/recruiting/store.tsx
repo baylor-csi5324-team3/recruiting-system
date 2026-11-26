@@ -1,10 +1,24 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { toast } from 'sonner';
 import type { Application, Job, Role, Stage } from './data';
-
-import { api, bodyJson, convertApplication, convertJob, convertSavedJob, toBackendStage, toBackendType,
-  fromBackendRole, type Actor, type AccountRow, type BackendUser, type BackendApplication, type BackendJob, type BackendSavedJob, type UserProfile } from '@/lib/recruiting-api';
-
+import {
+  api,
+  bodyJson,
+  convertApplication,
+  convertJob,
+  convertSavedJob,
+  toBackendStage,
+  toBackendType,
+  fromBackendRole,
+  type Actor,
+  type AccountRow,
+  type BackendUser,
+  type BackendApplication,
+  type BackendJob,
+  type BackendSavedJob,
+  type UserProfile,
+  loadApplicantApplications
+} from '@/lib/recruiting-api';
 
 const blankProfile: UserProfile = { name: '', email: '', phone: '', location: '', headline: '', bio: '', resume: '' };
 
@@ -84,8 +98,16 @@ function useRecruitingState() {
     try {
       const qs = role === 'Recruiter' && actor ? `?recruiterId=${actor.id}` : '';
       const jobsRequest = api<BackendJob[]>('/api/jobs' + qs);
-      const appsRequest = role === 'Applicant' && actor ? api<BackendApplication[]>(`/api/demo/applications?applicantId=${actor.id}`)
-        : role === 'Recruiter' && actor ? api<BackendApplication[]>(`/api/demo/applications?recruiterId=${actor.id}`) : Promise.resolve([]);
+
+      const appsRequest =
+          role === "Applicant" && actor
+              ? loadApplicantApplications(actor)
+              : role === "Recruiter" && actor
+                  ? api<BackendApplication[]>(
+                      `/api/demo/applications?recruiterId=${actor.id}`
+                  )
+                  : Promise.resolve([] as BackendApplication[]);
+
       const profileRequest = applicantId !== null ? loadProfile(applicantId) : Promise.resolve(blankProfile);
 
       const savedRequest = applicantId !== null

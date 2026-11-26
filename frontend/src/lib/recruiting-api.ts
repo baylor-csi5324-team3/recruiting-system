@@ -106,3 +106,64 @@ export function convertApplication(row: BackendApplication): Application {
       date: new Date(h.changedAt).toLocaleString('en-US'), actor: h.changedByUserId ? `User #${h.changedByUserId}` : 'System' }))
   };
 }
+
+export type SubmittedApplication = {
+  applicationId: number;
+  applicantId: number;
+  jobPostingId: number;
+  jobTitle: string;
+  companyName: string;
+  stage: string;
+  submittedAt: string;
+  resumeFilename: string | null;
+};
+
+export type ApplicationTracking = {
+  applicationId: number;
+  jobTitle: string;
+  companyName: string;
+  stage: string;
+  stageUpdatedAt: string | null;
+  stageHistory: {
+    stage: string;
+    changedAt: string;
+    changedByUserId: number | null;
+  }[];
+};
+
+export async function loadApplicantApplications(
+    actor: Actor
+): Promise<BackendApplication[]> {
+  const [submitted, tracking] = await Promise.all([
+    api<SubmittedApplication[]>(
+        `/api/applications?applicantId=${actor.id}`
+    ),
+    api<ApplicationTracking[]>(
+        "/api/applications/tracking",
+        {
+          headers: {
+            "X-Applicant-Id": String(actor.id),
+          },
+        }
+    ),
+  ]);
+
+  const trackingById = new Map(
+      tracking.map(item => [item.applicationId, item])
+  );
+
+  return submitted.map(item => {
+    const details = trackingById.get(item.applicationId);
+
+    return {
+      id: item.applicationId,
+      jobId: item.jobPostingId,
+      name: actor.name,
+      email: actor.email,
+      stage: details?.stage ?? item.stage,
+      submittedAt: item.submittedAt,
+      resumeFilename: item.resumeFilename,
+      history: details?.stageHistory ?? [],
+    };
+  });
+}

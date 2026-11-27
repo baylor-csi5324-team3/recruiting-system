@@ -20,7 +20,7 @@ import java.util.regex.Pattern;
  * Checks, before a request reaches a controller, that every user id it names belongs to the signed-in user, so the
  * existing end points can keep reading their ids. An id is named by an identity header (X-Applicant-Id,
  * X-Recruiter-Id, X-Administrator-Id), a query parameter (applicantId, recruiterId, administratorId) or an
- * applicant path (/api/applicants/{id}/..., /api/demo/saved/{id}). The lists of users need a signed-in user.
+ * applicant path (/api/applicants/{id}/...). The lists of users need a signed-in user.
  * Requests that name no user (registration, login, job search) pass unchanged.
  */
 public class IdentityCheckInterceptor implements HandlerInterceptor {
@@ -36,8 +36,7 @@ public class IdentityCheckInterceptor implements HandlerInterceptor {
             "administratorId", Role.ADMINISTRATOR);
 
     private static final List<Pattern> APPLICANT_PATHS = List.of(
-            Pattern.compile("^/api/applicants/([^/]+)(/.*)?$"),
-            Pattern.compile("^/api/demo/saved/([^/]+)$"));
+            Pattern.compile("^/api/applicants/([^/]+)(/.*)?$"));
 
     /** All applicants, used only by the two back-end demo pages: administrators only. */
     private static final String APPLICANT_LIST = "/api/applicants";

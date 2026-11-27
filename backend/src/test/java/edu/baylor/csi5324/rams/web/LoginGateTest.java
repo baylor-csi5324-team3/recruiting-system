@@ -77,7 +77,7 @@ class LoginGateTest {
                 .andExpect(status().isForbidden());
         mvc.perform(get("/api/applicants/" + ann.getId() + "/resumes").session(session)).andExpect(status().isOk());
         mvc.perform(get("/api/applicants/" + bob.getId() + "/resumes").session(session)).andExpect(status().isForbidden());
-        mvc.perform(get("/api/demo/saved/" + bob.getId()).session(session)).andExpect(status().isForbidden());
+        mvc.perform(get("/api/applicants/" + bob.getId() + "/saved-jobs").session(session)).andExpect(status().isForbidden());
     }
 
     @Test

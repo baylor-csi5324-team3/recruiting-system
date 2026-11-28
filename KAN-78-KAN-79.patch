@@ -1,0 +1,370 @@
+diff --git a/backend/src/main/java/edu/baylor/csi5324/rams/domain/Application.java b/backend/src/main/java/edu/baylor/csi5324/rams/domain/Application.java
+index fdf3db3..a1119b7 100644
+--- a/backend/src/main/java/edu/baylor/csi5324/rams/domain/Application.java
++++ b/backend/src/main/java/edu/baylor/csi5324/rams/domain/Application.java
+@@ -106,6 +106,7 @@ public class Application {
+             Long changedByUserId) {
+ 
+         if (stage != ApplicationStage.UNDER_REVIEW
++                && stage != ApplicationStage.SHORTLISTED
+                 && stage != ApplicationStage.INTERVIEW) {
+             throw new IllegalStateException(
+                     "An offer can only be made after review or interview."
+@@ -157,6 +158,13 @@ public class Application {
+                             || nextStage == ApplicationStage.WITHDRAWN;
+ 
+             case UNDER_REVIEW ->
++                    nextStage == ApplicationStage.SHORTLISTED
++                            || nextStage == ApplicationStage.INTERVIEW
++                            || nextStage == ApplicationStage.OFFER
++                            || nextStage == ApplicationStage.REJECTED
++                            || nextStage == ApplicationStage.WITHDRAWN;
++
++            case SHORTLISTED ->
+                     nextStage == ApplicationStage.INTERVIEW
+                             || nextStage == ApplicationStage.OFFER
+                             || nextStage == ApplicationStage.REJECTED
+@@ -217,6 +225,7 @@ public class Application {
+     public boolean checkWithdrawable() {
+         return stage == ApplicationStage.SUBMITTED
+                 || stage == ApplicationStage.UNDER_REVIEW
++                || stage == ApplicationStage.SHORTLISTED
+                 || stage == ApplicationStage.INTERVIEW;
+     }
+ 
+@@ -227,7 +236,7 @@ public class Application {
+         if (!checkWithdrawable()) {
+             throw new IllegalStateException(
+                     "Only applications in SUBMITTED, UNDER_REVIEW, "
+-                            + "or INTERVIEW can be withdrawn."
++                            + "SHORTLISTED, or INTERVIEW can be withdrawn."
+             );
+         }
+ 
+diff --git a/backend/src/main/java/edu/baylor/csi5324/rams/domain/ApplicationStage.java b/backend/src/main/java/edu/baylor/csi5324/rams/domain/ApplicationStage.java
+index 4be5022..d7aa0d8 100644
+--- a/backend/src/main/java/edu/baylor/csi5324/rams/domain/ApplicationStage.java
++++ b/backend/src/main/java/edu/baylor/csi5324/rams/domain/ApplicationStage.java
+@@ -3,6 +3,7 @@ package edu.baylor.csi5324.rams.domain;
+ public enum ApplicationStage {
+     SUBMITTED,
+     UNDER_REVIEW,
++    SHORTLISTED,
+     INTERVIEW,
+     OFFER,
+     ACCEPTED,
+diff --git a/backend/src/main/java/edu/baylor/csi5324/rams/repository/ApplicationRepository.java b/backend/src/main/java/edu/baylor/csi5324/rams/repository/ApplicationRepository.java
+index 4ae1585..1dfc8c1 100644
+--- a/backend/src/main/java/edu/baylor/csi5324/rams/repository/ApplicationRepository.java
++++ b/backend/src/main/java/edu/baylor/csi5324/rams/repository/ApplicationRepository.java
+@@ -9,6 +9,8 @@ public interface ApplicationRepository
+ 
+     List<Application> findByApplicantId(Long applicantId);
+ 
++    List<Application> findByJobPosting_Company_IdOrderBySubmitDateDesc(Long companyId);
++
+     boolean existsByApplicantIdAndJobPostingId(Long applicantId, Long jobPostingId);
+ 
+     List<Application> findByApplicantIdOrderBySubmitDateDesc(Long applicantId);
+diff --git a/backend/src/main/java/edu/baylor/csi5324/rams/service/ApplicationService.java b/backend/src/main/java/edu/baylor/csi5324/rams/service/ApplicationService.java
+index 768c4be..802b37d 100644
+--- a/backend/src/main/java/edu/baylor/csi5324/rams/service/ApplicationService.java
++++ b/backend/src/main/java/edu/baylor/csi5324/rams/service/ApplicationService.java
+@@ -12,6 +12,7 @@ import edu.baylor.csi5324.rams.domain.Resume;
+ import edu.baylor.csi5324.rams.repository.JobPostingRepository;
+ import edu.baylor.csi5324.rams.repository.ResumeRepository;
+ import edu.baylor.csi5324.rams.web.SubmitApplicationRequest;
++import edu.baylor.csi5324.rams.web.RecruiterApplicationResponse;
+ import edu.baylor.csi5324.rams.web.SubmittedApplicationResponse;
+ import java.time.LocalDate;
+ import java.util.List;
+@@ -98,6 +99,19 @@ public class ApplicationService {
+                 .stream().map(SubmittedApplicationResponse::from).toList();
+     }
+ 
++    /** Candidate pipeline: only applications for the active recruiter's company. */
++    @Transactional(readOnly = true)
++    public List<RecruiterApplicationResponse> listRecruiterApplications(Long recruiterId) {
++        Recruiter recruiter = recruiters.findById(recruiterId)
++                .orElseThrow(() -> new NotFoundException("Recruiter not found."));
++        if (recruiter.getRole() != Role.RECRUITER || recruiter.getStatus() != AccountStatus.ACTIVE
++                || recruiter.getCompany() == null) {
++            throw new ValidationException("An active recruiter with a company is required.");
++        }
++        return applications.findByJobPosting_Company_IdOrderBySubmitDateDesc(recruiter.getCompany().getId())
++                .stream().map(RecruiterApplicationResponse::from).toList();
++    }
++
+     private Applicant requireActiveApplicant(Long applicantId) {
+         Applicant applicant = applicants.findById(applicantId)
+                 .orElseThrow(() -> new NotFoundException("Applicant not found."));
+diff --git a/backend/src/main/java/edu/baylor/csi5324/rams/web/ApplicationController.java b/backend/src/main/java/edu/baylor/csi5324/rams/web/ApplicationController.java
+index bd82471..36819c6 100644
+--- a/backend/src/main/java/edu/baylor/csi5324/rams/web/ApplicationController.java
++++ b/backend/src/main/java/edu/baylor/csi5324/rams/web/ApplicationController.java
+@@ -40,6 +40,12 @@ public class ApplicationController {
+         return applicationService.listApplications(applicantId);
+     }
+ 
++    @GetMapping("/candidates")
++    public List<RecruiterApplicationResponse> listCandidates(
++            @RequestHeader(RECRUITER_HEADER) Long recruiterId) {
++        return applicationService.listRecruiterApplications(recruiterId);
++    }
++
+     // Retrieve all applications for an applicant.
+     @GetMapping("/tracking")
+     public List<ApplicationSummary> getApplications(
+diff --git a/backend/src/main/java/edu/baylor/csi5324/rams/web/RecruiterApplicationResponse.java b/backend/src/main/java/edu/baylor/csi5324/rams/web/RecruiterApplicationResponse.java
+new file mode 100644
+index 0000000..ff289df
+--- /dev/null
++++ b/backend/src/main/java/edu/baylor/csi5324/rams/web/RecruiterApplicationResponse.java
+@@ -0,0 +1,20 @@
++package edu.baylor.csi5324.rams.web;
++
++import edu.baylor.csi5324.rams.domain.Application;
++import edu.baylor.csi5324.rams.domain.ApplicationStage;
++import edu.baylor.csi5324.rams.domain.StageRecord;
++import java.time.LocalDateTime;
++import java.util.List;
++
++/** Candidate pipeline read model, without resume binary content. */
++public record RecruiterApplicationResponse(Long id, Long jobId, String name,
++        String email, ApplicationStage stage, LocalDateTime submittedAt,
++        String resumeFilename, List<StageRecord> history) {
++    public static RecruiterApplicationResponse from(Application application) {
++        return new RecruiterApplicationResponse(application.getId(),
++                application.getJobPosting().getId(), application.getApplicant().getName(),
++                application.getApplicant().getEmail(), application.getStage(),
++                application.getSubmitDate(), application.getResumeFilename(),
++                application.getStageHistory());
++    }
++}
+diff --git a/backend/src/test/java/edu/baylor/csi5324/rams/domain/ApplicationWithdrawalTest.java b/backend/src/test/java/edu/baylor/csi5324/rams/domain/ApplicationWithdrawalTest.java
+index d598b18..c866949 100644
+--- a/backend/src/test/java/edu/baylor/csi5324/rams/domain/ApplicationWithdrawalTest.java
++++ b/backend/src/test/java/edu/baylor/csi5324/rams/domain/ApplicationWithdrawalTest.java
+@@ -26,6 +26,10 @@ class ApplicationWithdrawalTest {
+             case UNDER_REVIEW -> application.startReview(
+                     SUBMITTED_AT.plusHours(1), 25L
+             );
++            case SHORTLISTED -> {
++                application.startReview(SUBMITTED_AT.plusHours(1), 25L);
++                application.updateStage(ApplicationStage.SHORTLISTED, SUBMITTED_AT.plusHours(2), 25L);
++            }
+             case INTERVIEW -> {
+                 application.startReview(SUBMITTED_AT.plusHours(1), 25L);
+                 application.updateStage(
+@@ -64,6 +68,7 @@ class ApplicationWithdrawalTest {
+         for (ApplicationStage initial : List.of(
+                 ApplicationStage.SUBMITTED,
+                 ApplicationStage.UNDER_REVIEW,
++                ApplicationStage.SHORTLISTED,
+                 ApplicationStage.INTERVIEW)) {
+ 
+             Application application = applicationAt(initial);
+diff --git a/backend/src/test/java/edu/baylor/csi5324/rams/service/UpdateApplicationStageIntegrationTest.java b/backend/src/test/java/edu/baylor/csi5324/rams/service/UpdateApplicationStageIntegrationTest.java
+index 23b96d1..ce696dd 100644
+--- a/backend/src/test/java/edu/baylor/csi5324/rams/service/UpdateApplicationStageIntegrationTest.java
++++ b/backend/src/test/java/edu/baylor/csi5324/rams/service/UpdateApplicationStageIntegrationTest.java
+@@ -116,4 +116,28 @@ class UpdateApplicationStageIntegrationTest {
+                 ApplicationStage.UNDER_REVIEW,
+                 summary.stage());
+     }
++    @Test
++    void candidatePipelineIsCompanyScopedAndIncludesPersistedShortlist() {
++        Company company = companies.save(new Company("Candidate Co"));
++        Company other = companies.save(new Company("Other Candidate Co"));
++        Recruiter recruiter = recruiters.save(new Recruiter("candidate-r@example.com", "password", "Recruiter", company, AccountStatus.ACTIVE));
++        Recruiter outsider = recruiters.save(new Recruiter("candidate-other@example.com", "password", "Other", other, AccountStatus.ACTIVE));
++        Applicant applicant = applicants.save(new Applicant("candidate-a@example.com", "password", "Candidate", AccountStatus.ACTIVE));
++        JobPosting posting = jobs.save(new JobPosting(new PostingDetails("Engineer", "Test position", "Waco, TX", "FULL_TIME", LocalDate.now().plusYears(1)), recruiter, LocalDateTime.now()));
++        Application application = applications.saveAndFlush(new Application(applicant, posting, LocalDateTime.now()));
++        service.updateStage(application.getId(), recruiter.getId(), ApplicationStage.UNDER_REVIEW);
++        service.updateStage(application.getId(), recruiter.getId(), ApplicationStage.SHORTLISTED);
++        entityManager.flush();
++        entityManager.clear();
++        var candidates = service.listRecruiterApplications(recruiter.getId());
++        assertEquals(1, candidates.size());
++        assertEquals(application.getId(), candidates.get(0).id());
++        assertEquals("Candidate", candidates.get(0).name());
++        assertEquals(ApplicationStage.SHORTLISTED, candidates.get(0).stage());
++        assertEquals(ApplicationStage.SHORTLISTED, candidates.get(0).history().get(2).getStage());
++        assertTrue(service.listRecruiterApplications(outsider.getId()).isEmpty());
++        assertEquals(ApplicationStage.SHORTLISTED, service.getApplicationDetails(application.getId(), applicant.getId()).stage());
++        service.updateStage(application.getId(), recruiter.getId(), ApplicationStage.INTERVIEW);
++        assertEquals(ApplicationStage.INTERVIEW, service.listRecruiterApplications(recruiter.getId()).get(0).stage());
++    }
+ }
+diff --git a/backend/src/test/java/edu/baylor/csi5324/rams/web/LoginGateTest.java b/backend/src/test/java/edu/baylor/csi5324/rams/web/LoginGateTest.java
+index 75b03ec..4b79c3b 100644
+--- a/backend/src/test/java/edu/baylor/csi5324/rams/web/LoginGateTest.java
++++ b/backend/src/test/java/edu/baylor/csi5324/rams/web/LoginGateTest.java
+@@ -66,6 +66,10 @@ class LoginGateTest {
+     void applicantCannotUseARecruiterHeader() throws Exception {
+         mvc.perform(get("/api/applications/tracking").header("X-Recruiter-Id", ann.getId()).session(signInAsAnn()))
+                 .andExpect(status().isForbidden());
++        mvc.perform(get("/api/applications/candidates").header("X-Recruiter-Id", ann.getId()).session(signInAsAnn()))
++                .andExpect(status().isForbidden());
++        mvc.perform(get("/api/applications/candidates").header("X-Recruiter-Id", ann.getId()))
++                .andExpect(status().isUnauthorized());
+     }
+ 
+     @Test
+diff --git a/frontend/src/features/recruiting/applications.tsx b/frontend/src/features/recruiting/applications.tsx
+index 2c12fd1..10b0286 100644
+--- a/frontend/src/features/recruiting/applications.tsx
++++ b/frontend/src/features/recruiting/applications.tsx
+@@ -8,7 +8,7 @@ import { stageClass, formatDate, type Application, type Stage } from './data';
+ import { type UserProfile } from '@/lib/recruiting-api';
+ import { toast } from 'sonner';
+ 
+-const activeStages: Stage[]=['Submitted','Under review','Interview'];
++const activeStages: Stage[]=['Submitted','Under review','Shortlisted','Interview'];
+ const closedStages: Stage[]=['Accepted','Declined','Rejected','Withdrawn'];
+ export function ApplicationsPage({candidates=false}:{candidates?:boolean}) {
+   const {applications,jobs,role,actor,updateStage,loading,error,refresh}=useRecruiting();
+@@ -244,7 +244,7 @@ export function ApplicationsPage({candidates=false}:{candidates?:boolean}) {
+               ) : (
+                 <div className="flex flex-wrap justify-end gap-2 border-t pt-4">
+                   {role === "Applicant" &&
+-                    ["Submitted", "Under review", "Interview"].includes(selected.stage) && (
++                    ["Submitted", "Under review", "Shortlisted", "Interview"].includes(selected.stage) && (
+                       <Button variant="outline" onClick={() => setConfirm("Withdrawn")}>
+                         Withdraw
+                       </Button>
+@@ -260,14 +260,17 @@ export function ApplicationsPage({candidates=false}:{candidates?:boolean}) {
+                         <Button onClick={() => setConfirm("Under review")}>Start review</Button>
+                       )}
+                       {selected.stage === "Under review" && (
++                        <Button onClick={() => setConfirm("Shortlisted")}>Shortlist</Button>
++                      )}
++                      {["Under review", "Shortlisted"].includes(selected.stage) && (
+                         <Button onClick={() => setConfirm("Interview")}>Move to interview</Button>
+                       )}
+-                      {["Submitted", "Under review", "Interview"].includes(selected.stage) && (
++                      {["Submitted", "Under review", "Shortlisted", "Interview"].includes(selected.stage) && (
+                         <Button variant="outline" onClick={() => setConfirm("Rejected")}>
+                           Reject
+                         </Button>
+                       )}
+-                      {["Under review", "Interview"].includes(selected.stage) && (
++                      {["Under review", "Shortlisted", "Interview"].includes(selected.stage) && (
+                         <Button onClick={() => setConfirm("Offer")}>Extend offer</Button>
+                       )}
+                       {role === "Recruiter" && selected.stage === "Offer" && (
+diff --git a/frontend/src/features/recruiting/data.ts b/frontend/src/features/recruiting/data.ts
+index ab40339..baec87d 100644
+--- a/frontend/src/features/recruiting/data.ts
++++ b/frontend/src/features/recruiting/data.ts
+@@ -1,7 +1,7 @@
+ export type Role = 'Applicant' | 'Recruiter' | 'Administrator' | 'Guest';
+-export type Stage = 'Submitted' | 'Under review' | 'Interview' | 'Offer' | 'Accepted' | 'Declined' | 'Rejected' | 'Withdrawn';
++export type Stage = 'Submitted' | 'Under review' | 'Shortlisted' | 'Interview' | 'Offer' | 'Accepted' | 'Declined' | 'Rejected' | 'Withdrawn';
+ export type Job = { id: number; title: string; company: string; logo: string; color: string; location: string; type: string; mode: string; salary: string; category: string; level: string; posted: string; closes: string; status: 'Open' | 'Draft' | 'Closed'; description: string; qualifications: string; };
+ export type Application = { id: number; jobId: number; name: string; email: string; stage: Stage; date: string; resume: string; history: { stage: Stage; date: string; actor: string }[] };
+ export const formatDate = (date: string) => new Date(date + 'T12:00:00').toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+ export const stageClass = (stage: string) => stage === 'Under review' ? 'review' : stage.toLowerCase();
+-export const transitions: Partial<Record<Stage, Stage[]>> = { Submitted: ['Under review','Rejected'], 'Under review': ['Interview','Offer','Rejected'], Interview: ['Offer','Rejected'] };
++export const transitions: Partial<Record<Stage, Stage[]>> = { Submitted: ['Under review','Rejected'], 'Under review': ['Shortlisted','Interview','Offer','Rejected'], Shortlisted: ['Interview','Offer','Rejected'], Interview: ['Offer','Rejected'] };
+diff --git a/frontend/src/features/recruiting/store.tsx b/frontend/src/features/recruiting/store.tsx
+index d2da4c3..c4b0114 100644
+--- a/frontend/src/features/recruiting/store.tsx
++++ b/frontend/src/features/recruiting/store.tsx
+@@ -17,7 +17,8 @@ import {
+   type BackendJob,
+   type BackendSavedJob,
+   type UserProfile,
+-  loadApplicantApplications
++  loadApplicantApplications,
++  loadRecruiterApplications
+ } from '@/lib/recruiting-api';
+ 
+ const blankProfile: UserProfile = { name: '', email: '', phone: '', location: '', headline: '', bio: '', resume: '' };
+@@ -103,9 +104,7 @@ function useRecruitingState() {
+           role === "Applicant" && actor
+               ? loadApplicantApplications(actor)
+               : role === "Recruiter" && actor
+-                  ? api<BackendApplication[]>(
+-                      `/api/demo/applications?recruiterId=${actor.id}`
+-                  )
++                  ? loadRecruiterApplications(actor)
+                   : Promise.resolve([] as BackendApplication[]);
+ 
+       const profileRequest = applicantId !== null ? loadProfile(applicantId) : Promise.resolve(blankProfile);
+diff --git a/frontend/src/lib/recruiting-api.ts b/frontend/src/lib/recruiting-api.ts
+index 99ae518..1fdd493 100644
+--- a/frontend/src/lib/recruiting-api.ts
++++ b/frontend/src/lib/recruiting-api.ts
+@@ -51,11 +51,11 @@ export function bodyJson(data: unknown, headers?: Record<string, string>): Reque
+ }
+ 
+ export const toBackendStage: Record<Stage, string> = {
+-  'Submitted': 'SUBMITTED', 'Under review': 'UNDER_REVIEW', 'Interview': 'INTERVIEW', 'Offer': 'OFFER',
++  'Submitted': 'SUBMITTED', 'Under review': 'UNDER_REVIEW', 'Shortlisted': 'SHORTLISTED', 'Interview': 'INTERVIEW', 'Offer': 'OFFER',
+   'Accepted': 'ACCEPTED', 'Declined': 'DECLINED', 'Rejected': 'REJECTED', 'Withdrawn': 'WITHDRAWN'
+ };
+ export const fromBackendStage = (s: string): Stage => ({
+-  SUBMITTED: 'Submitted', UNDER_REVIEW: 'Under review', INTERVIEW: 'Interview', OFFER: 'Offer',
++  SUBMITTED: 'Submitted', UNDER_REVIEW: 'Under review', SHORTLISTED: 'Shortlisted', INTERVIEW: 'Interview', OFFER: 'Offer',
+   ACCEPTED: 'Accepted', DECLINED: 'Declined', REJECTED: 'Rejected', WITHDRAWN: 'Withdrawn'
+ } as Record<string, Stage>)[s] ?? 'Submitted';
+ export const toBackendType = (s: string) => ({ 'Full-time': 'FULL_TIME', 'Part-time': 'PART_TIME',
+@@ -167,3 +167,10 @@ export async function loadApplicantApplications(
+     };
+   });
+ }
++
++/** Read the authenticated recruiter's company candidate pipeline. */
++export function loadRecruiterApplications(actor: Actor): Promise<BackendApplication[]> {
++  return api<BackendApplication[]>('/api/applications/candidates', {
++    headers: { 'X-Recruiter-Id': String(actor.id) },
++  });
++}
+diff --git a/frontend/src/styles.css b/frontend/src/styles.css
+index d6398e9..6cff46c 100644
+--- a/frontend/src/styles.css
++++ b/frontend/src/styles.css
+@@ -239,7 +239,7 @@
+ .field textarea { min-height: 110px; resize: vertical; }
+ .status { padding: 5px 9px; font-size: 11px; border-radius: 4px; background: var(--muted); color: var(--muted-foreground); display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
+ .status::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
+-.status.review, .status.interview { background: color-mix(in oklab, var(--status-blue) 9%, var(--card)); color: var(--status-blue); }
++.status.review, .status.shortlisted, .status.interview { background: color-mix(in oklab, var(--status-blue) 9%, var(--card)); color: var(--status-blue); }
+ .status.offer { background: color-mix(in oklab, var(--status-amber) 10%, var(--card)); color: var(--status-amber); }
+ .status.accepted, .status.open { background: var(--brand-soft); color: var(--primary); }
+ .status.rejected { background: color-mix(in oklab, var(--destructive) 8%, var(--card)); color: var(--destructive); }
+diff --git a/frontend/src/test/recruiting-api.test.ts b/frontend/src/test/recruiting-api.test.ts
+index 3379ed0..65893cf 100644
+--- a/frontend/src/test/recruiting-api.test.ts
++++ b/frontend/src/test/recruiting-api.test.ts
+@@ -10,6 +10,9 @@ import {
+ 
+ import {
+     loadApplicantApplications,
++    loadRecruiterApplications,
++    convertApplication,
++    toBackendStage,
+     type Actor,
+ } from "@/lib/recruiting-api";
+ 
+@@ -185,3 +188,18 @@ describe("KAN-80: My Applications real backend", () => {
+         ).toBe(false);
+     });
+ });
++
++
++describe("KAN-78 and KAN-79: candidate pipeline", () => {
++    afterEach(() => vi.unstubAllGlobals());
++    it("loads candidates through the real recruiter endpoint and converts shortlisted history", async () => {
++        const row = { id: 10, jobId: 5, name: "Candidate", email: "a@example.com", stage: "SHORTLISTED", submittedAt: "2026-11-18T10:00:00", resumeFilename: "resume.pdf", history: [{ stage: "SHORTLISTED", changedAt: "2026-11-18T11:00:00", changedByUserId: 2 }] };
++        const mockFetch = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => [row] });
++        vi.stubGlobal("fetch", mockFetch);
++        const rows = await loadRecruiterApplications({ id: 2, name: "Recruiter", email: "r@example.com", role: "Recruiter", company: null });
++        expect(mockFetch).toHaveBeenCalledExactlyOnceWith("/api/applications/candidates", { headers: { "X-Recruiter-Id": "2" } });
++        expect(convertApplication(rows[0]).stage).toBe("Shortlisted");
++        expect(convertApplication(rows[0]).history[0].stage).toBe("Shortlisted");
++        expect(toBackendStage.Shortlisted).toBe("SHORTLISTED");
++    });
++});

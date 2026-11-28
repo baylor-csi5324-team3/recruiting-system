@@ -10,6 +10,9 @@ import {
 
 import {
     loadApplicantApplications,
+    loadRecruiterApplications,
+    convertApplication,
+    toBackendStage,
     type Actor,
 } from "@/lib/recruiting-api";
 
@@ -183,5 +186,20 @@ describe("KAN-80: My Applications real backend", () => {
                 String(url).includes("/api/demo/applications")
             )
         ).toBe(false);
+    });
+});
+
+
+describe("KAN-78 and KAN-79: candidate pipeline", () => {
+    afterEach(() => vi.unstubAllGlobals());
+    it("loads candidates through the real recruiter endpoint and converts shortlisted history", async () => {
+        const row = { id: 10, jobId: 5, name: "Candidate", email: "a@example.com", stage: "SHORTLISTED", submittedAt: "2026-11-18T10:00:00", resumeFilename: "resume.pdf", history: [{ stage: "SHORTLISTED", changedAt: "2026-11-18T11:00:00", changedByUserId: 2 }] };
+        const mockFetch = vi.fn().mockResolvedValue({ ok: true, status: 200, json: async () => [row] });
+        vi.stubGlobal("fetch", mockFetch);
+        const rows = await loadRecruiterApplications({ id: 2, name: "Recruiter", email: "r@example.com", role: "Recruiter", company: null });
+        expect(mockFetch).toHaveBeenCalledExactlyOnceWith("/api/applications/candidates", { headers: { "X-Recruiter-Id": "2" } });
+        expect(convertApplication(rows[0]).stage).toBe("Shortlisted");
+        expect(convertApplication(rows[0]).history[0].stage).toBe("Shortlisted");
+        expect(toBackendStage.Shortlisted).toBe("SHORTLISTED");
     });
 });

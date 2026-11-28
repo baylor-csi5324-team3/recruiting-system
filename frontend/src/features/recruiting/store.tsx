@@ -17,7 +17,8 @@ import {
   type BackendJob,
   type BackendSavedJob,
   type UserProfile,
-  loadApplicantApplications
+  loadApplicantApplications,
+  loadRecruiterApplications
 } from '@/lib/recruiting-api';
 
 const blankProfile: UserProfile = { name: '', email: '', phone: '', location: '', headline: '', bio: '', resume: '' };
@@ -103,9 +104,7 @@ function useRecruitingState() {
           role === "Applicant" && actor
               ? loadApplicantApplications(actor)
               : role === "Recruiter" && actor
-                  ? api<BackendApplication[]>(
-                      `/api/demo/applications?recruiterId=${actor.id}`
-                  )
+                  ? loadRecruiterApplications(actor)
                   : Promise.resolve([] as BackendApplication[]);
 
       const profileRequest = applicantId !== null ? loadProfile(applicantId) : Promise.resolve(blankProfile);

@@ -66,6 +66,10 @@ class LoginGateTest {
     void applicantCannotUseARecruiterHeader() throws Exception {
         mvc.perform(get("/api/applications/tracking").header("X-Recruiter-Id", ann.getId()).session(signInAsAnn()))
                 .andExpect(status().isForbidden());
+        mvc.perform(get("/api/applications/candidates").header("X-Recruiter-Id", ann.getId()).session(signInAsAnn()))
+                .andExpect(status().isForbidden());
+        mvc.perform(get("/api/applications/candidates").header("X-Recruiter-Id", ann.getId()))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

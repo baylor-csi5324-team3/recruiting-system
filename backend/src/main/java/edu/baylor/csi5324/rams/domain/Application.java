@@ -106,6 +106,7 @@ public class Application {
             Long changedByUserId) {
 
         if (stage != ApplicationStage.UNDER_REVIEW
+                && stage != ApplicationStage.SHORTLISTED
                 && stage != ApplicationStage.INTERVIEW) {
             throw new IllegalStateException(
                     "An offer can only be made after review or interview."
@@ -157,6 +158,13 @@ public class Application {
                             || nextStage == ApplicationStage.WITHDRAWN;
 
             case UNDER_REVIEW ->
+                    nextStage == ApplicationStage.SHORTLISTED
+                            || nextStage == ApplicationStage.INTERVIEW
+                            || nextStage == ApplicationStage.OFFER
+                            || nextStage == ApplicationStage.REJECTED
+                            || nextStage == ApplicationStage.WITHDRAWN;
+
+            case SHORTLISTED ->
                     nextStage == ApplicationStage.INTERVIEW
                             || nextStage == ApplicationStage.OFFER
                             || nextStage == ApplicationStage.REJECTED
@@ -217,6 +225,7 @@ public class Application {
     public boolean checkWithdrawable() {
         return stage == ApplicationStage.SUBMITTED
                 || stage == ApplicationStage.UNDER_REVIEW
+                || stage == ApplicationStage.SHORTLISTED
                 || stage == ApplicationStage.INTERVIEW;
     }
 
@@ -227,7 +236,7 @@ public class Application {
         if (!checkWithdrawable()) {
             throw new IllegalStateException(
                     "Only applications in SUBMITTED, UNDER_REVIEW, "
-                            + "or INTERVIEW can be withdrawn."
+                            + "SHORTLISTED, or INTERVIEW can be withdrawn."
             );
         }
 

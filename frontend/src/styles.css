@@ -239,7 +239,7 @@
 .field textarea { min-height: 110px; resize: vertical; }
 .status { padding: 5px 9px; font-size: 11px; border-radius: 4px; background: var(--muted); color: var(--muted-foreground); display: inline-flex; align-items: center; gap: 5px; white-space: nowrap; }
 .status::before { content: ''; width: 5px; height: 5px; border-radius: 50%; background: currentColor; }
-.status.review, .status.interview { background: color-mix(in oklab, var(--status-blue) 9%, var(--card)); color: var(--status-blue); }
+.status.review, .status.shortlisted, .status.interview { background: color-mix(in oklab, var(--status-blue) 9%, var(--card)); color: var(--status-blue); }
 .status.offer { background: color-mix(in oklab, var(--status-amber) 10%, var(--card)); color: var(--status-amber); }
 .status.accepted, .status.open { background: var(--brand-soft); color: var(--primary); }
 .status.rejected { background: color-mix(in oklab, var(--destructive) 8%, var(--card)); color: var(--destructive); }

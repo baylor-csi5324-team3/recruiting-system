@@ -26,6 +26,10 @@ class ApplicationWithdrawalTest {
             case UNDER_REVIEW -> application.startReview(
                     SUBMITTED_AT.plusHours(1), 25L
             );
+            case SHORTLISTED -> {
+                application.startReview(SUBMITTED_AT.plusHours(1), 25L);
+                application.updateStage(ApplicationStage.SHORTLISTED, SUBMITTED_AT.plusHours(2), 25L);
+            }
             case INTERVIEW -> {
                 application.startReview(SUBMITTED_AT.plusHours(1), 25L);
                 application.updateStage(
@@ -64,6 +68,7 @@ class ApplicationWithdrawalTest {
         for (ApplicationStage initial : List.of(
                 ApplicationStage.SUBMITTED,
                 ApplicationStage.UNDER_REVIEW,
+                ApplicationStage.SHORTLISTED,
                 ApplicationStage.INTERVIEW)) {
 
             Application application = applicationAt(initial);

@@ -9,6 +9,8 @@ public interface ApplicationRepository
 
     List<Application> findByApplicantId(Long applicantId);
 
+    List<Application> findByJobPosting_Company_IdOrderBySubmitDateDesc(Long companyId);
+
     boolean existsByApplicantIdAndJobPostingId(Long applicantId, Long jobPostingId);
 
     List<Application> findByApplicantIdOrderBySubmitDateDesc(Long applicantId);

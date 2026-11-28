@@ -12,6 +12,7 @@ import edu.baylor.csi5324.rams.domain.Resume;
 import edu.baylor.csi5324.rams.repository.JobPostingRepository;
 import edu.baylor.csi5324.rams.repository.ResumeRepository;
 import edu.baylor.csi5324.rams.web.SubmitApplicationRequest;
+import edu.baylor.csi5324.rams.web.RecruiterApplicationResponse;
 import edu.baylor.csi5324.rams.web.SubmittedApplicationResponse;
 import java.time.LocalDate;
 import java.util.List;
@@ -96,6 +97,19 @@ public class ApplicationService {
         requireActiveApplicant(applicantId);
         return applications.findByApplicantIdOrderBySubmitDateDesc(applicantId)
                 .stream().map(SubmittedApplicationResponse::from).toList();
+    }
+
+    /** Candidate pipeline: only applications for the active recruiter's company. */
+    @Transactional(readOnly = true)
+    public List<RecruiterApplicationResponse> listRecruiterApplications(Long recruiterId) {
+        Recruiter recruiter = recruiters.findById(recruiterId)
+                .orElseThrow(() -> new NotFoundException("Recruiter not found."));
+        if (recruiter.getRole() != Role.RECRUITER || recruiter.getStatus() != AccountStatus.ACTIVE
+                || recruiter.getCompany() == null) {
+            throw new ValidationException("An active recruiter with a company is required.");
+        }
+        return applications.findByJobPosting_Company_IdOrderBySubmitDateDesc(recruiter.getCompany().getId())
+                .stream().map(RecruiterApplicationResponse::from).toList();
     }
 
     private Applicant requireActiveApplicant(Long applicantId) {

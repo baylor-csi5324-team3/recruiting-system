@@ -40,6 +40,12 @@ public class ApplicationController {
         return applicationService.listApplications(applicantId);
     }
 
+    @GetMapping("/candidates")
+    public List<RecruiterApplicationResponse> listCandidates(
+            @RequestHeader(RECRUITER_HEADER) Long recruiterId) {
+        return applicationService.listRecruiterApplications(recruiterId);
+    }
+
     // Retrieve all applications for an applicant.
     @GetMapping("/tracking")
     public List<ApplicationSummary> getApplications(

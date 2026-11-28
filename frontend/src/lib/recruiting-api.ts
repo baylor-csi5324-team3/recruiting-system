@@ -51,11 +51,11 @@ export function bodyJson(data: unknown, headers?: Record<string, string>): Reque
 }
 
 export const toBackendStage: Record<Stage, string> = {
-  'Submitted': 'SUBMITTED', 'Under review': 'UNDER_REVIEW', 'Interview': 'INTERVIEW', 'Offer': 'OFFER',
+  'Submitted': 'SUBMITTED', 'Under review': 'UNDER_REVIEW', 'Shortlisted': 'SHORTLISTED', 'Interview': 'INTERVIEW', 'Offer': 'OFFER',
   'Accepted': 'ACCEPTED', 'Declined': 'DECLINED', 'Rejected': 'REJECTED', 'Withdrawn': 'WITHDRAWN'
 };
 export const fromBackendStage = (s: string): Stage => ({
-  SUBMITTED: 'Submitted', UNDER_REVIEW: 'Under review', INTERVIEW: 'Interview', OFFER: 'Offer',
+  SUBMITTED: 'Submitted', UNDER_REVIEW: 'Under review', SHORTLISTED: 'Shortlisted', INTERVIEW: 'Interview', OFFER: 'Offer',
   ACCEPTED: 'Accepted', DECLINED: 'Declined', REJECTED: 'Rejected', WITHDRAWN: 'Withdrawn'
 } as Record<string, Stage>)[s] ?? 'Submitted';
 export const toBackendType = (s: string) => ({ 'Full-time': 'FULL_TIME', 'Part-time': 'PART_TIME',
@@ -165,5 +165,12 @@ export async function loadApplicantApplications(
       resumeFilename: item.resumeFilename,
       history: details?.stageHistory ?? [],
     };
+  });
+}
+
+/** Read the authenticated recruiter's company candidate pipeline. */
+export function loadRecruiterApplications(actor: Actor): Promise<BackendApplication[]> {
+  return api<BackendApplication[]>('/api/applications/candidates', {
+    headers: { 'X-Recruiter-Id': String(actor.id) },
   });
 }

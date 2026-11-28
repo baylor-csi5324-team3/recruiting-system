@@ -8,7 +8,7 @@ import { stageClass, formatDate, type Application, type Stage } from './data';
 import { type UserProfile } from '@/lib/recruiting-api';
 import { toast } from 'sonner';
 
-const activeStages: Stage[]=['Submitted','Under review','Interview'];
+const activeStages: Stage[]=['Submitted','Under review','Shortlisted','Interview'];
 const closedStages: Stage[]=['Accepted','Declined','Rejected','Withdrawn'];
 export function ApplicationsPage({candidates=false}:{candidates?:boolean}) {
   const {applications,jobs,role,actor,updateStage,loading,error,refresh}=useRecruiting();
@@ -244,7 +244,7 @@ export function ApplicationsPage({candidates=false}:{candidates?:boolean}) {
               ) : (
                 <div className="flex flex-wrap justify-end gap-2 border-t pt-4">
                   {role === "Applicant" &&
-                    ["Submitted", "Under review", "Interview"].includes(selected.stage) && (
+                    ["Submitted", "Under review", "Shortlisted", "Interview"].includes(selected.stage) && (
                       <Button variant="outline" onClick={() => setConfirm("Withdrawn")}>
                         Withdraw
                       </Button>
@@ -260,14 +260,17 @@ export function ApplicationsPage({candidates=false}:{candidates?:boolean}) {
                         <Button onClick={() => setConfirm("Under review")}>Start review</Button>
                       )}
                       {selected.stage === "Under review" && (
+                        <Button onClick={() => setConfirm("Shortlisted")}>Shortlist</Button>
+                      )}
+                      {["Under review", "Shortlisted"].includes(selected.stage) && (
                         <Button onClick={() => setConfirm("Interview")}>Move to interview</Button>
                       )}
-                      {["Submitted", "Under review", "Interview"].includes(selected.stage) && (
+                      {["Submitted", "Under review", "Shortlisted", "Interview"].includes(selected.stage) && (
                         <Button variant="outline" onClick={() => setConfirm("Rejected")}>
                           Reject
                         </Button>
                       )}
-                      {["Under review", "Interview"].includes(selected.stage) && (
+                      {["Under review", "Shortlisted", "Interview"].includes(selected.stage) && (
                         <Button onClick={() => setConfirm("Offer")}>Extend offer</Button>
                       )}
                       {role === "Recruiter" && selected.stage === "Offer" && (

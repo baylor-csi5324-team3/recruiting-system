@@ -116,4 +116,28 @@ class UpdateApplicationStageIntegrationTest {
                 ApplicationStage.UNDER_REVIEW,
                 summary.stage());
     }
+    @Test
+    void candidatePipelineIsCompanyScopedAndIncludesPersistedShortlist() {
+        Company company = companies.save(new Company("Candidate Co"));
+        Company other = companies.save(new Company("Other Candidate Co"));
+        Recruiter recruiter = recruiters.save(new Recruiter("candidate-r@example.com", "password", "Recruiter", company, AccountStatus.ACTIVE));
+        Recruiter outsider = recruiters.save(new Recruiter("candidate-other@example.com", "password", "Other", other, AccountStatus.ACTIVE));
+        Applicant applicant = applicants.save(new Applicant("candidate-a@example.com", "password", "Candidate", AccountStatus.ACTIVE));
+        JobPosting posting = jobs.save(new JobPosting(new PostingDetails("Engineer", "Test position", "Waco, TX", "FULL_TIME", LocalDate.now().plusYears(1)), recruiter, LocalDateTime.now()));
+        Application application = applications.saveAndFlush(new Application(applicant, posting, LocalDateTime.now()));
+        service.updateStage(application.getId(), recruiter.getId(), ApplicationStage.UNDER_REVIEW);
+        service.updateStage(application.getId(), recruiter.getId(), ApplicationStage.SHORTLISTED);
+        entityManager.flush();
+        entityManager.clear();
+        var candidates = service.listRecruiterApplications(recruiter.getId());
+        assertEquals(1, candidates.size());
+        assertEquals(application.getId(), candidates.get(0).id());
+        assertEquals("Candidate", candidates.get(0).name());
+        assertEquals(ApplicationStage.SHORTLISTED, candidates.get(0).stage());
+        assertEquals(ApplicationStage.SHORTLISTED, candidates.get(0).history().get(2).getStage());
+        assertTrue(service.listRecruiterApplications(outsider.getId()).isEmpty());
+        assertEquals(ApplicationStage.SHORTLISTED, service.getApplicationDetails(application.getId(), applicant.getId()).stage());
+        service.updateStage(application.getId(), recruiter.getId(), ApplicationStage.INTERVIEW);
+        assertEquals(ApplicationStage.INTERVIEW, service.listRecruiterApplications(recruiter.getId()).get(0).stage());
+    }
 }
